@@ -1,0 +1,538 @@
+{
+  "city": "ooty",
+  "lastUpdated": "2024-01-15",
+  "pois": [
+    {
+      "id": "poi-doddabetta",
+      "name": "Doddabetta Peak",
+      "category": ["nature", "scenic", "trekking"],
+      "coordinates": { "lat": 11.4025, "lng": 76.7356 },
+      "estimated_duration_mins": 90,
+      "best_time": "morning",
+      "crowd_level": "high",
+      "accessibility": "moderate",
+      "cost_inr": 30,
+      "description": "The highest peak in the Nilgiri Mountains at 2,637 meters. Offers panoramic views of the surrounding hills and valleys. On clear days, you can see as far as the Mysore plateau.",
+      "tips": [
+        "Visit early morning for clearest views before mist rolls in",
+        "Telescope house at the top charges extra for viewing",
+        "Carry a light jacket as it can be windy",
+        "Avoid weekends for fewer crowds"
+      ],
+      "source": "osm"
+    },
+    {
+      "id": "poi-ooty-lake",
+      "name": "Ooty Lake",
+      "category": ["nature", "scenic", "boating", "relaxation"],
+      "coordinates": { "lat": 11.4037, "lng": 76.6932 },
+      "estimated_duration_mins": 60,
+      "best_time": "any",
+      "crowd_level": "high",
+      "accessibility": "easy",
+      "cost_inr": 50,
+      "description": "An artificial lake created in 1824. Perfect for pedal boating and enjoying scenic views. The surrounding garden is well-maintained with a small toy train for kids.",
+      "tips": [
+        "Boating costs vary by boat type - pedal boats are cheapest",
+        "Horse rides available along the lake",
+        "Food stalls serve local snacks",
+        "Best enjoyed in the late afternoon"
+      ],
+      "source": "wikivoyage"
+    },
+    {
+      "id": "poi-pykara-falls",
+      "name": "Pykara Falls",
+      "category": ["nature", "scenic", "waterfall"],
+      "coordinates": { "lat": 11.4667, "lng": 76.5833 },
+      "estimated_duration_mins": 120,
+      "best_time": "afternoon",
+      "crowd_level": "medium",
+      "accessibility": "moderate",
+      "cost_inr": 20,
+      "description": "Beautiful waterfall located about 20 km from Ooty. The falls cascade down in two stages surrounded by pine and eucalyptus forests. Boat rides available on Pykara Lake nearby.",
+      "tips": [
+        "Best during monsoon and post-monsoon (July-December)",
+        "Combine with Pykara Lake boating",
+        "Carry raincoat during monsoon",
+        "About 45-minute drive from Ooty town"
+      ],
+      "source": "osm"
+    },
+    {
+      "id": "poi-avalanche-lake",
+      "name": "Avalanche Lake",
+      "category": ["nature", "scenic", "trekking", "adventure"],
+      "coordinates": { "lat": 11.3125, "lng": 76.5667 },
+      "estimated_duration_mins": 180,
+      "best_time": "morning",
+      "crowd_level": "low",
+      "accessibility": "difficult",
+      "cost_inr": 250,
+      "description": "A pristine lake formed by a massive landslide in 1823. Known for its trout fishing and serene beauty. Surrounded by shola forests with stunning mountain backdrop.",
+      "tips": [
+        "Permit required from forest department",
+        "Best for nature lovers seeking solitude",
+        "Trout fishing requires separate permit",
+        "4x4 vehicle recommended for approach road"
+      ],
+      "source": "local"
+    },
+    {
+      "id": "poi-pine-forest",
+      "name": "Pine Forest",
+      "category": ["nature", "scenic", "photography"],
+      "coordinates": { "lat": 11.4333, "lng": 76.6500 },
+      "estimated_duration_mins": 45,
+      "best_time": "any",
+      "crowd_level": "medium",
+      "accessibility": "easy",
+      "cost_inr": 0,
+      "description": "A scenic stretch of tall pine trees creating a mystical atmosphere. Popular for photography and film shoots. The road through the forest is a beautiful drive.",
+      "tips": [
+        "On the way to Pykara - combine both",
+        "Great for photography in misty weather",
+        "No entry fee, just a forest drive",
+        "Several Bollywood movies shot here"
+      ],
+      "source": "wikivoyage"
+    },
+    {
+      "id": "poi-emerald-lake",
+      "name": "Emerald Lake",
+      "category": ["nature", "scenic", "offbeat"],
+      "coordinates": { "lat": 11.3833, "lng": 76.5167 },
+      "estimated_duration_mins": 150,
+      "best_time": "morning",
+      "crowd_level": "low",
+      "accessibility": "moderate",
+      "cost_inr": 100,
+      "description": "A serene dam surrounded by tea estates and eucalyptus forests. Less touristy compared to other lakes. Perfect for those seeking peaceful natural beauty.",
+      "tips": [
+        "About 25 km from Ooty on the way to Silent Valley",
+        "Great picnic spot with minimal crowd",
+        "Photography enthusiasts' favorite",
+        "Limited food options - carry snacks"
+      ],
+      "source": "local"
+    },
+    {
+      "id": "poi-botanical-gardens",
+      "name": "Government Botanical Gardens",
+      "category": ["nature", "gardens", "heritage"],
+      "coordinates": { "lat": 11.4146, "lng": 76.6979 },
+      "estimated_duration_mins": 120,
+      "best_time": "morning",
+      "crowd_level": "high",
+      "accessibility": "easy",
+      "cost_inr": 65,
+      "description": "Established in 1848, these 22-hectare gardens house over 1000 species of plants including rare orchids, ferns, and a fossilized tree trunk believed to be 20 million years old.",
+      "tips": [
+        "Plan for flower show in May if visiting then",
+        "Italian garden section is most beautiful",
+        "Camera fee charged separately",
+        "Guide services available at entrance"
+      ],
+      "source": "osm"
+    },
+    {
+      "id": "poi-rose-garden",
+      "name": "Rose Garden",
+      "category": ["nature", "gardens", "photography"],
+      "coordinates": { "lat": 11.4083, "lng": 76.6833 },
+      "estimated_duration_mins": 60,
+      "best_time": "morning",
+      "crowd_level": "medium",
+      "accessibility": "easy",
+      "cost_inr": 30,
+      "description": "One of the largest rose gardens in India with over 20,000 varieties of roses spread across terraced slopes. Best visited during peak blooming season.",
+      "tips": [
+        "Best blooming season: April to June",
+        "Located near the main town, walkable from bus stand",
+        "Morning light best for photography",
+        "About 45 minutes sufficient for full exploration"
+      ],
+      "source": "wikivoyage"
+    },
+    {
+      "id": "poi-tea-factory",
+      "name": "Tea Factory & Tea Gardens",
+      "category": ["culture", "food", "shopping"],
+      "coordinates": { "lat": 11.4000, "lng": 76.7333 },
+      "estimated_duration_mins": 90,
+      "best_time": "any",
+      "crowd_level": "medium",
+      "accessibility": "easy",
+      "cost_inr": 20,
+      "description": "Visit a working tea factory to see how Nilgiri tea is processed from leaf to cup. Walk through verdant tea gardens and purchase fresh tea directly.",
+      "tips": [
+        "Multiple tea estates offer tours - Doddabetta Tea Factory is popular",
+        "Buy orthodox tea for best quality",
+        "Free samples usually available",
+        "Photography restrictions inside factory"
+      ],
+      "source": "local"
+    },
+    {
+      "id": "poi-sims-park",
+      "name": "Sim's Park",
+      "category": ["nature", "gardens", "relaxation"],
+      "coordinates": { "lat": 11.3533, "lng": 76.7967 },
+      "estimated_duration_mins": 90,
+      "best_time": "afternoon",
+      "crowd_level": "low",
+      "accessibility": "moderate",
+      "cost_inr": 50,
+      "description": "A beautiful botanical garden in nearby Coonoor with over 1000 plant species. Less crowded than Ooty gardens with stunning valley views.",
+      "tips": [
+        "Located in Coonoor, about 30 mins from Ooty",
+        "Annual fruit and vegetable show in May",
+        "Great for a quieter garden experience",
+        "Combine with visit to Lamb's Rock"
+      ],
+      "source": "wikivoyage"
+    },
+    {
+      "id": "poi-st-stephens-church",
+      "name": "St. Stephen's Church",
+      "category": ["culture", "heritage", "architecture"],
+      "coordinates": { "lat": 11.4103, "lng": 76.6939 },
+      "estimated_duration_mins": 30,
+      "best_time": "any",
+      "crowd_level": "low",
+      "accessibility": "easy",
+      "cost_inr": 0,
+      "description": "One of the oldest churches in the Nilgiris, built in 1829. Features beautiful stained glass windows, timber framework, and old gravestones in the cemetery.",
+      "tips": [
+        "Free entry, donations welcome",
+        "Active church - respect service timings",
+        "Historical cemetery worth exploring",
+        "Near the main town center"
+      ],
+      "source": "osm"
+    },
+    {
+      "id": "poi-tribal-museum",
+      "name": "Tribal Research Centre Museum",
+      "category": ["culture", "heritage", "museum"],
+      "coordinates": { "lat": 11.4167, "lng": 76.7000 },
+      "estimated_duration_mins": 60,
+      "best_time": "any",
+      "crowd_level": "low",
+      "accessibility": "easy",
+      "cost_inr": 15,
+      "description": "Learn about the indigenous Toda, Badaga, and other tribes of the Nilgiris. Displays traditional huts, artifacts, and cultural items.",
+      "tips": [
+        "Closed on Sundays and holidays",
+        "Photography not allowed inside",
+        "Small but informative",
+        "Good for understanding local culture"
+      ],
+      "source": "local"
+    },
+    {
+      "id": "poi-stone-house",
+      "name": "Stone House (John Sullivan's Bungalow)",
+      "category": ["culture", "heritage", "architecture"],
+      "coordinates": { "lat": 11.4117, "lng": 76.6950 },
+      "estimated_duration_mins": 45,
+      "best_time": "any",
+      "crowd_level": "low",
+      "accessibility": "easy",
+      "cost_inr": 20,
+      "description": "The first bungalow built in Ooty (1822) by John Sullivan, the founder of Ooty. Now a heritage site showcasing colonial architecture and history.",
+      "tips": [
+        "Limited visiting hours - check in advance",
+        "Historical significance for Ooty's founding",
+        "Well-preserved colonial architecture",
+        "Peaceful gardens around the house"
+      ],
+      "source": "wikivoyage"
+    },
+    {
+      "id": "poi-toy-train",
+      "name": "Nilgiri Mountain Railway (Toy Train)",
+      "category": ["culture", "heritage", "experience", "scenic"],
+      "coordinates": { "lat": 11.4106, "lng": 76.6933 },
+      "estimated_duration_mins": 180,
+      "best_time": "morning",
+      "crowd_level": "high",
+      "accessibility": "easy",
+      "cost_inr": 300,
+      "description": "UNESCO World Heritage steam railway built in 1908. The scenic journey from Ooty to Coonoor or Mettupalayam passes through 16 tunnels and over 250 bridges.",
+      "tips": [
+        "Book tickets in advance online via IRCTC",
+        "First class has better views",
+        "Ooty to Coonoor is 1 hour, full journey to Mettupalayam is 5 hours",
+        "Morning trains have clearer views"
+      ],
+      "source": "osm"
+    },
+    {
+      "id": "poi-kingstar-chocolate",
+      "name": "Kingstar Chocolate Factory",
+      "category": ["food", "shopping"],
+      "coordinates": { "lat": 11.4075, "lng": 76.6967 },
+      "estimated_duration_mins": 30,
+      "best_time": "any",
+      "crowd_level": "medium",
+      "accessibility": "easy",
+      "cost_inr": 0,
+      "description": "Famous chocolate shop in Ooty known for homemade chocolates. Watch chocolates being made and sample various flavors before buying.",
+      "tips": [
+        "Try the fruit and nut chocolate",
+        "Handmade varieties more expensive but worth it",
+        "Bulk buying is cheaper",
+        "Multiple outlets in town, original on Commercial Road"
+      ],
+      "source": "local"
+    },
+    {
+      "id": "poi-shinkows",
+      "name": "Shinkow's Chinese Restaurant",
+      "category": ["food", "restaurant"],
+      "coordinates": { "lat": 11.4089, "lng": 76.6944 },
+      "estimated_duration_mins": 60,
+      "best_time": "evening",
+      "crowd_level": "medium",
+      "accessibility": "easy",
+      "cost_inr": 400,
+      "description": "Iconic Chinese restaurant since 1935, popular for its hot and sour soup, momos, and chili chicken. A must-visit for food enthusiasts.",
+      "tips": [
+        "Try the famous hot and sour soup",
+        "Gets crowded during dinner - arrive early",
+        "Cash preferred, cards accepted",
+        "Located on Commissioner's Road"
+      ],
+      "source": "local"
+    },
+    {
+      "id": "poi-earl-grey-cafe",
+      "name": "Earl Grey Cafe & Tea Lounge",
+      "category": ["food", "cafe", "relaxation"],
+      "coordinates": { "lat": 11.4092, "lng": 76.6950 },
+      "estimated_duration_mins": 45,
+      "best_time": "afternoon",
+      "crowd_level": "low",
+      "accessibility": "easy",
+      "cost_inr": 300,
+      "description": "Cozy cafe specializing in Nilgiri teas and continental breakfast. Perfect for a relaxed afternoon with a view of the misty hills.",
+      "tips": [
+        "Try the Nilgiri frost tea",
+        "Good for breakfast and brunch",
+        "Wi-Fi available",
+        "Book window seats for best views"
+      ],
+      "source": "local"
+    },
+    {
+      "id": "poi-adderley",
+      "name": "Adderley Tea Room",
+      "category": ["food", "cafe", "heritage"],
+      "coordinates": { "lat": 11.4050, "lng": 76.6920 },
+      "estimated_duration_mins": 45,
+      "best_time": "afternoon",
+      "crowd_level": "low",
+      "accessibility": "easy",
+      "cost_inr": 350,
+      "description": "Heritage tea room serving traditional English high tea with scones, sandwiches, and Nilgiri tea. Colonial ambiance adds to the experience.",
+      "tips": [
+        "Reservation recommended on weekends",
+        "Try the Devon cream tea set",
+        "Beautiful colonial decor",
+        "Part of a heritage hotel"
+      ],
+      "source": "local"
+    },
+    {
+      "id": "poi-sidewalk-cafe",
+      "name": "Sidewalk Cafe",
+      "category": ["food", "cafe", "vegetarian"],
+      "coordinates": { "lat": 11.4100, "lng": 76.6955 },
+      "estimated_duration_mins": 45,
+      "best_time": "any",
+      "crowd_level": "medium",
+      "accessibility": "easy",
+      "cost_inr": 250,
+      "description": "Popular vegetarian cafe serving Italian and continental dishes. Known for pastas, pizzas, and homemade bread. Great for vegetarian travelers.",
+      "tips": [
+        "Try the mushroom pasta",
+        "Limited seating, arrive early",
+        "Pure vegetarian kitchen",
+        "Homemade bread is excellent"
+      ],
+      "source": "local"
+    },
+    {
+      "id": "poi-boat-house",
+      "name": "Boat House",
+      "category": ["activity", "boating", "family"],
+      "coordinates": { "lat": 11.4042, "lng": 76.6928 },
+      "estimated_duration_mins": 60,
+      "best_time": "afternoon",
+      "crowd_level": "high",
+      "accessibility": "easy",
+      "cost_inr": 150,
+      "description": "Main boating facility at Ooty Lake with pedal boats, row boats, and motor boats. Mini train and small amusement park for kids.",
+      "tips": [
+        "Rates vary by boat type and duration",
+        "Pedal boats most popular for couples",
+        "Avoid weekends for shorter queues",
+        "Life jackets provided"
+      ],
+      "source": "osm"
+    },
+    {
+      "id": "poi-dolphin-nose",
+      "name": "Dolphin's Nose Viewpoint",
+      "category": ["nature", "scenic", "trekking"],
+      "coordinates": { "lat": 11.3492, "lng": 76.7892 },
+      "estimated_duration_mins": 90,
+      "best_time": "morning",
+      "crowd_level": "low",
+      "accessibility": "moderate",
+      "cost_inr": 20,
+      "description": "A rock formation in Coonoor that resembles a dolphin's nose. Offers breathtaking views of the Catherine Falls and surrounding tea estates.",
+      "tips": [
+        "Located in Coonoor, about 30 mins from Ooty",
+        "Short trek required to viewpoint",
+        "Best views in early morning",
+        "Combine with Lamb's Rock visit"
+      ],
+      "source": "wikivoyage"
+    },
+    {
+      "id": "poi-lambs-rock",
+      "name": "Lamb's Rock",
+      "category": ["nature", "scenic", "photography"],
+      "coordinates": { "lat": 11.3558, "lng": 76.8067 },
+      "estimated_duration_mins": 60,
+      "best_time": "morning",
+      "crowd_level": "medium",
+      "accessibility": "easy",
+      "cost_inr": 20,
+      "description": "A scenic viewpoint in Coonoor offering panoramic views of tea gardens and the Coimbatore plains. Named after a British officer who frequented the spot.",
+      "tips": [
+        "Located in Coonoor",
+        "Easy access by road",
+        "Great for sunrise views",
+        "Binoculars useful for distant views"
+      ],
+      "source": "osm"
+    },
+    {
+      "id": "poi-thread-garden",
+      "name": "Thread Garden",
+      "category": ["culture", "art", "unique"],
+      "coordinates": { "lat": 11.4117, "lng": 76.6967 },
+      "estimated_duration_mins": 45,
+      "best_time": "any",
+      "crowd_level": "low",
+      "accessibility": "easy",
+      "cost_inr": 50,
+      "description": "A unique garden where all flowers are made entirely from thread. A labor of love featuring 500+ species of thread flowers. Guinness World Record holder.",
+      "tips": [
+        "Photography allowed",
+        "Small but impressive",
+        "Good for a quick stop",
+        "Near the main market area"
+      ],
+      "source": "local"
+    },
+    {
+      "id": "poi-wax-world",
+      "name": "Wax World",
+      "category": ["culture", "museum", "family"],
+      "coordinates": { "lat": 11.4100, "lng": 76.6975 },
+      "estimated_duration_mins": 45,
+      "best_time": "any",
+      "crowd_level": "medium",
+      "accessibility": "easy",
+      "cost_inr": 75,
+      "description": "A wax museum featuring life-size figures of Indian leaders, sports personalities, and film stars. Fun for families with children.",
+      "tips": [
+        "Photography with statues allowed",
+        "Good for rainy day activity",
+        "Combined tickets with other attractions available",
+        "Located in town center"
+      ],
+      "source": "local"
+    },
+    {
+      "id": "poi-upper-bhavani-lake",
+      "name": "Upper Bhavani Lake",
+      "category": ["nature", "scenic", "offbeat", "trekking"],
+      "coordinates": { "lat": 11.3667, "lng": 76.5000 },
+      "estimated_duration_mins": 180,
+      "best_time": "morning",
+      "crowd_level": "low",
+      "accessibility": "difficult",
+      "cost_inr": 150,
+      "description": "Remote and pristine lake surrounded by grasslands and shola forests. Requires forest permit and is accessible only by authorized vehicles.",
+      "tips": [
+        "Permit required - arrange in advance",
+        "About 35 km from Ooty",
+        "One of the most beautiful spots in Nilgiris",
+        "No facilities - carry food and water"
+      ],
+      "source": "local"
+    },
+    {
+      "id": "poi-wenlock-downs",
+      "name": "Wenlock Downs (Golf Course)",
+      "category": ["nature", "scenic", "relaxation"],
+      "coordinates": { "lat": 11.4033, "lng": 76.7267 },
+      "estimated_duration_mins": 45,
+      "best_time": "any",
+      "crowd_level": "low",
+      "accessibility": "easy",
+      "cost_inr": 0,
+      "description": "Vast rolling grasslands adjacent to the 9th Mile area. Features one of India's highest golf courses. Beautiful for evening walks and photography.",
+      "tips": [
+        "Free to visit the viewing area",
+        "Popular picnic spot",
+        "Great for photography during golden hour",
+        "Film shooting location for many movies"
+      ],
+      "source": "wikivoyage"
+    },
+    {
+      "id": "poi-toda-huts",
+      "name": "Toda Huts",
+      "category": ["culture", "heritage", "offbeat"],
+      "coordinates": { "lat": 11.4200, "lng": 76.7100 },
+      "estimated_duration_mins": 45,
+      "best_time": "any",
+      "crowd_level": "low",
+      "accessibility": "easy",
+      "cost_inr": 50,
+      "description": "Traditional barrel-shaped huts of the Toda tribe. Learn about the unique architecture and culture of this indigenous community.",
+      "tips": [
+        "Part of a cultural preservation area",
+        "Respectful interaction with locals appreciated",
+        "Good for understanding local heritage",
+        "Photography etiquette important"
+      ],
+      "source": "local"
+    },
+    {
+      "id": "poi-kamaraj-sagar-dam",
+      "name": "Kamaraj Sagar Dam",
+      "category": ["nature", "scenic", "offbeat"],
+      "coordinates": { "lat": 11.4500, "lng": 76.6667 },
+      "estimated_duration_mins": 60,
+      "best_time": "afternoon",
+      "crowd_level": "low",
+      "accessibility": "easy",
+      "cost_inr": 0,
+      "description": "A peaceful reservoir also known as Sandynallah Reservoir. Less crowded alternative for boating and picnics with scenic surroundings.",
+      "tips": [
+        "About 10 km from Ooty",
+        "Boating available at lower cost than Ooty Lake",
+        "Peaceful alternative to crowded spots",
+        "Good sunset views"
+      ],
+      "source": "local"
+    }
+  ]
+}
