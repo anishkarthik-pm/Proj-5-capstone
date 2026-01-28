@@ -1,4 +1,5 @@
 import type { Itinerary, FormattedItinerary, FormattedDay, FormattedActivity } from "@/types";
+import { useDebugStore } from "@/lib/stores/debugStore";
 
 interface EmailWorkflowPayload {
   itinerary: FormattedItinerary;
@@ -21,16 +22,20 @@ export async function triggerPdfWorkflow(data: {
   userEmail: string;
   userName: string;
 }): Promise<WorkflowResponse> {
+  const { logInfo, logSuccess, logError, logWarning, logApi } = useDebugStore.getState();
   const webhookUrl = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL;
 
   if (!webhookUrl) {
-    console.warn("n8n webhook URL not configured");
+    logWarning("n8n", "n8n webhook URL not configured");
     return {
       success: false,
       message: "Email service not configured",
       error: "N8N_WEBHOOK_URL not set",
     };
   }
+
+  logInfo("n8n", `Triggering email workflow for ${data.userEmail}`);
+  const startTime = Date.now();
 
   try {
     const formattedItinerary = formatItineraryForPdf(data.itinerary);
@@ -50,18 +55,26 @@ export async function triggerPdfWorkflow(data: {
       body: JSON.stringify(payload),
     });
 
+    const duration = Date.now() - startTime;
+    logApi(webhookUrl, "POST", response.status, duration);
+
     if (!response.ok) {
       throw new Error(`Webhook returned ${response.status}`);
     }
 
     const result = await response.json();
 
+    logSuccess("n8n", `Email sent to ${data.userEmail}`, { response: result });
+
     return {
       success: true,
       message: result.message || "Email sent successfully",
     };
   } catch (error) {
-    console.error("Error triggering n8n workflow:", error);
+    const duration = Date.now() - startTime;
+    logError("n8n", "Failed to trigger n8n workflow", error);
+    logApi(webhookUrl, "POST", 0, duration, { error: error instanceof Error ? error.message : "Unknown" });
+
     return {
       success: false,
       message: "Failed to send email",

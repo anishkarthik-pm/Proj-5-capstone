@@ -8,10 +8,12 @@ import { VoiceOutput } from "@/components/voice/VoiceOutput";
 import { ItineraryView } from "@/components/itinerary/ItineraryView";
 import { SourcesPanel } from "@/components/itinerary/SourcesPanel";
 import { EmailDialog } from "@/components/email/EmailDialog";
+import { DebugPanel, DebugButton } from "@/components/debug/DebugPanel";
 import { useTripStore } from "@/lib/stores/tripStore";
 import { useVoiceStore } from "@/lib/stores/voiceStore";
 import { useConversationStore } from "@/lib/stores/conversationStore";
 import { useUIStore } from "@/lib/stores/uiStore";
+import { useDebugStore } from "@/lib/stores/debugStore";
 import { handleVoiceInput, orchestrator } from "@/services/llm/orchestrator";
 import { speak, stopSpeaking } from "@/services/tts";
 import { initializeRAG } from "@/services/rag";
@@ -22,12 +24,16 @@ export default function Home() {
   const { setCurrentResponse, addToHistory, setStatus, isSpeaking } = useVoiceStore();
   const { addMessage, setProcessing, isProcessing } = useConversationStore();
   const { isDemoMode } = useUIStore();
+  const { logInfo, logSuccess, logError } = useDebugStore();
   const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
 
   // Initialize RAG on mount
   useEffect(() => {
-    initializeRAG().catch(console.error);
-  }, []);
+    logInfo("system", "Initializing application...");
+    initializeRAG()
+      .then(() => logSuccess("system", "RAG system initialized"))
+      .catch((err) => logError("system", "Failed to initialize RAG", err));
+  }, [logInfo, logSuccess, logError]);
 
   // Handle voice transcript completion
   const handleTranscriptComplete = useCallback(
@@ -38,6 +44,9 @@ export default function Home() {
       if (isSpeaking) {
         stopSpeaking();
       }
+
+      // Log user input
+      logInfo("user", `Voice input: "${transcript}"`);
 
       // Add user message
       addMessage({ role: "user", content: transcript });
@@ -50,7 +59,14 @@ export default function Home() {
 
       try {
         // Process with orchestrator
+        logInfo("system", "Processing with orchestrator...");
+        const startTime = Date.now();
         const response = await handleVoiceInput(transcript);
+        const duration = Date.now() - startTime;
+
+        logSuccess("system", `Orchestrator responded in ${duration}ms`, {
+          intent: response.data,
+        });
 
         // Update conversation
         addMessage({
@@ -64,6 +80,9 @@ export default function Home() {
         const data = response.data as { itinerary?: Itinerary } | undefined;
         if (data?.itinerary) {
           setItinerary(data.itinerary);
+          logSuccess("system", "Itinerary updated", {
+            days: data.itinerary.days.length,
+          });
         }
 
         // Set response for TTS
@@ -71,10 +90,11 @@ export default function Home() {
 
         // Speak the response
         if (response.shouldSpeak) {
+          logInfo("voice", "Speaking response via TTS");
           speak(response.message);
         }
       } catch (error) {
-        console.error("Error processing voice input:", error);
+        logError("system", "Error processing voice input", error);
         const errorMessage = "I'm sorry, I had trouble processing that. Please try again.";
         addMessage({ role: "assistant", content: errorMessage });
         setCurrentResponse(errorMessage);
@@ -94,11 +114,15 @@ export default function Home() {
       setLoading,
       setItinerary,
       setCurrentResponse,
+      logInfo,
+      logSuccess,
+      logError,
     ]
   );
 
   // Handle new trip
   const handleNewTrip = useCallback(() => {
+    logInfo("system", "Starting new trip");
     orchestrator.reset();
     setItinerary(null);
     setCurrentResponse("");
@@ -107,7 +131,7 @@ export default function Home() {
       content: "Let's plan a new trip! Tell me about your Ooty adventure.",
     });
     speak("Let's plan a new trip! Tell me about your Ooty adventure.");
-  }, [setItinerary, setCurrentResponse, addMessage]);
+  }, [setItinerary, setCurrentResponse, addMessage, logInfo]);
 
   return (
     <div className="h-screen flex flex-col bg-background">
@@ -154,6 +178,8 @@ export default function Home() {
                 Demo Mode
               </span>
             )}
+            {/* Debug Button */}
+            <DebugButton />
           </div>
         </div>
       </header>
@@ -226,6 +252,9 @@ export default function Home() {
           itinerary={itinerary}
         />
       )}
+
+      {/* Debug Panel */}
+      <DebugPanel />
     </div>
   );
 }
