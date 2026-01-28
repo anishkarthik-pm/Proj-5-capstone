@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useEffect, useCallback } from "react";
+import React, { useEffect, useCallback, useState } from "react";
 import { Mountain, RefreshCw, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { VoiceInput } from "@/components/voice/VoiceInput";
 import { VoiceOutput } from "@/components/voice/VoiceOutput";
 import { ItineraryView } from "@/components/itinerary/ItineraryView";
 import { SourcesPanel } from "@/components/itinerary/SourcesPanel";
+import { EmailDialog } from "@/components/email/EmailDialog";
 import { useTripStore } from "@/lib/stores/tripStore";
 import { useVoiceStore } from "@/lib/stores/voiceStore";
 import { useConversationStore } from "@/lib/stores/conversationStore";
@@ -21,6 +22,7 @@ export default function Home() {
   const { setCurrentResponse, addToHistory, setStatus, isSpeaking } = useVoiceStore();
   const { addMessage, setProcessing, isProcessing } = useConversationStore();
   const { isDemoMode } = useUIStore();
+  const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
 
   // Initialize RAG on mount
   useEffect(() => {
@@ -136,7 +138,12 @@ export default function Home() {
                   <RefreshCw className="w-4 h-4 mr-2" />
                   New Trip
                 </Button>
-                <Button variant="outline" size="sm" className="hidden sm:flex">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="hidden sm:flex"
+                  onClick={() => setIsEmailDialogOpen(true)}
+                >
                   <Mail className="w-4 h-4 mr-2" />
                   Email
                 </Button>
@@ -209,6 +216,15 @@ export default function Home() {
             </p>
           </div>
         </div>
+      )}
+
+      {/* Email Dialog */}
+      {itinerary && (
+        <EmailDialog
+          open={isEmailDialogOpen}
+          onOpenChange={setIsEmailDialogOpen}
+          itinerary={itinerary}
+        />
       )}
     </div>
   );
