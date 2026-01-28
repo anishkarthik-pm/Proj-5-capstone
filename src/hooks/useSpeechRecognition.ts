@@ -21,11 +21,29 @@ interface SpeechRecognitionErrorEvent {
   message?: string;
 }
 
+// Define the SpeechRecognition interface for Web Speech API
+interface ISpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onstart: (() => void) | null;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+}
+
+interface ISpeechRecognitionConstructor {
+  new (): ISpeechRecognition;
+}
+
 // Extend Window interface for Web Speech API
 declare global {
   interface Window {
-    SpeechRecognition: typeof SpeechRecognition;
-    webkitSpeechRecognition: typeof SpeechRecognition;
+    SpeechRecognition: ISpeechRecognitionConstructor;
+    webkitSpeechRecognition: ISpeechRecognitionConstructor;
   }
 }
 
@@ -38,7 +56,7 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
     onError,
   } = options;
 
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const recognitionRef = useRef<ISpeechRecognition | null>(null);
   const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const maxDurationTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [isSupported, setIsSupported] = useState(true);

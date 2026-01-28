@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { useVoiceStore } from "@/lib/stores/voiceStore";
-import { speak, stopSpeaking, pauseSpeaking, resumeSpeaking, getTTSService } from "@/services/tts";
+import { speak, stopSpeaking, pauseSpeaking, resumeSpeaking } from "@/services/tts";
 
 interface VoiceOutputProps {
   text?: string;

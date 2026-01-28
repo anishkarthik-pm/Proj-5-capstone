@@ -20,6 +20,8 @@ export interface POI {
   description: string;
   tips: string[];
   source: "osm" | "wikivoyage" | "local";
+  dietary?: "veg" | "non-veg" | "both"; // For food spots
+  mealType?: "breakfast" | "lunch" | "dinner" | "snack" | "any"; // For food spots
 }
 
 export interface POIDataset {
@@ -42,6 +44,7 @@ export interface TripPreferences {
   budget: "budget" | "moderate" | "luxury";
   mobility: "full" | "limited";
   travelParty: "solo" | "couple" | "family" | "group";
+  dietaryPreference?: "veg" | "non-veg" | "any"; // Food preference
   specialRequests?: string;
 }
 

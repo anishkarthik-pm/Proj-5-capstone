@@ -93,9 +93,16 @@ const INTEREST_CATEGORY_MAP: Record<string, string[]> = {
 };
 
 /**
+ * Extended POI search output with per-POI reasoning
+ */
+export interface POISearchOutputWithReasons extends POISearchOutput {
+  poiReasons: Map<string, string>;
+}
+
+/**
  * Search for POIs based on preferences
  */
-export async function searchPOIs(input: POISearchInput): Promise<POISearchOutput> {
+export async function searchPOIs(input: POISearchInput): Promise<POISearchOutputWithReasons> {
   const {
     interests,
     pace = "moderate",
@@ -104,31 +111,42 @@ export async function searchPOIs(input: POISearchInput): Promise<POISearchOutput
     maxResults = 10,
   } = input;
 
-  const startTime = Date.now();
-
   // Get all POIs
   const allPOIs = poiData.pois as POI[];
 
   // Filter out excluded POIs
   const availablePOIs = allPOIs.filter((poi) => !excludeIds.includes(poi.id));
 
-  // Score and rank POIs
-  const scoredPOIs = availablePOIs.map((poi) => ({
-    poi,
-    score: calculatePOIScore(poi, interests, pace, timeSlot, excludeIds),
-  }));
+  // Score and rank POIs with detailed breakdown
+  const scoredPOIs = availablePOIs.map((poi) => {
+    const breakdown = calculatePOIScoreWithBreakdown(poi, interests, pace, timeSlot, excludeIds);
+    return {
+      poi,
+      score: breakdown.total,
+      breakdown,
+    };
+  });
 
   // Sort by score descending
   scoredPOIs.sort((a, b) => b.score - a.score);
 
-  // Take top results
-  const topPOIs = scoredPOIs.slice(0, maxResults).map((item) => item.poi);
+  // Take top results and generate per-POI reasoning
+  const topScoredPOIs = scoredPOIs.slice(0, maxResults);
+  const topPOIs = topScoredPOIs.map((item) => item.poi);
 
-  // Generate reasoning
+  // Build reasoning map
+  const poiReasons = new Map<string, string>();
+  for (const item of topScoredPOIs) {
+    const reason = generatePOIReason(item.poi, item.breakdown, interests, pace, timeSlot);
+    poiReasons.set(item.poi.id, reason);
+  }
+
+  // Generate overall reasoning
   const reasoning = generateReasoning(interests, pace, timeSlot, topPOIs);
 
   // Collect sources
-  const sources = [...new Set(topPOIs.map((poi) => poi.source))].map(
+  const uniqueSources = Array.from(new Set(topPOIs.map((poi) => poi.source)));
+  const sources = uniqueSources.map(
     (source) => {
       switch (source) {
         case "osm":
@@ -143,52 +161,74 @@ export async function searchPOIs(input: POISearchInput): Promise<POISearchOutput
     }
   );
 
-  const processingTime = Date.now() - startTime;
-
   return {
     pois: topPOIs,
+    poiReasons,
     reasoning,
     sources,
   };
 }
 
 /**
- * Calculate a score for a POI based on preferences
+ * Score breakdown for detailed reasoning
  */
-function calculatePOIScore(
-  poi: POI,
-  interests: string[],
-  pace: string,
-  timeSlot?: string,
-  excludeIds?: string[]
-): number {
-  let score = 0;
-
-  // 1. Interest relevance (40%)
-  const interestScore = calculateInterestScore(poi, interests);
-  score += interestScore * SCORE_WEIGHTS.interestRelevance;
-
-  // 2. Best time match (20%)
-  const timeScore = calculateTimeScore(poi, timeSlot);
-  score += timeScore * SCORE_WEIGHTS.bestTimeMatch;
-
-  // 3. Crowd level vs pace (20%)
-  const crowdScore = calculateCrowdScore(poi, pace);
-  score += crowdScore * SCORE_WEIGHTS.crowdLevelMatch;
-
-  // 4. Diversity bonus (20%)
-  const diversityScore = calculateDiversityScore(poi, excludeIds || []);
-  score += diversityScore * SCORE_WEIGHTS.diversityBonus;
-
-  return score;
+interface ScoreBreakdown {
+  total: number;
+  interestScore: number;
+  timeScore: number;
+  crowdScore: number;
+  diversityScore: number;
+  matchedInterests: string[];
 }
 
 /**
- * Calculate interest relevance score
+ * Calculate score with detailed breakdown for reasoning
  */
-function calculateInterestScore(poi: POI, interests: string[]): number {
+function calculatePOIScoreWithBreakdown(
+  poi: POI,
+  interests: string[],
+  pace: string,
+  timeSlot?: "morning" | "afternoon" | "evening",
+  excludeIds?: string[]
+): ScoreBreakdown {
+  // 1. Interest relevance (40%)
+  const { score: interestScore, matchedInterests } = calculateInterestScoreWithMatches(poi, interests);
+
+  // 2. Best time match (20%)
+  const timeScore = calculateTimeScore(poi, timeSlot);
+
+  // 3. Crowd level vs pace (20%)
+  const crowdScore = calculateCrowdScore(poi, pace);
+
+  // 4. Diversity bonus (20%)
+  const diversityScore = calculateDiversityScore(poi, excludeIds || []);
+
+  const total =
+    interestScore * SCORE_WEIGHTS.interestRelevance +
+    timeScore * SCORE_WEIGHTS.bestTimeMatch +
+    crowdScore * SCORE_WEIGHTS.crowdLevelMatch +
+    diversityScore * SCORE_WEIGHTS.diversityBonus;
+
+  return {
+    total,
+    interestScore,
+    timeScore,
+    crowdScore,
+    diversityScore,
+    matchedInterests,
+  };
+}
+
+/**
+ * Calculate interest relevance score with matched interests
+ */
+function calculateInterestScoreWithMatches(
+  poi: POI,
+  interests: string[]
+): { score: number; matchedInterests: string[] } {
   let matchCount = 0;
-  let totalPossible = interests.length;
+  const totalPossible = interests.length;
+  const matchedInterests: string[] = [];
 
   for (const interest of interests) {
     const categories = INTEREST_CATEGORY_MAP[interest.toLowerCase()] || [
@@ -205,12 +245,16 @@ function calculateInterestScore(poi: POI, interests: string[]): number {
         )
       ) {
         matchCount++;
+        matchedInterests.push(interest);
         break;
       }
     }
   }
 
-  return totalPossible > 0 ? matchCount / totalPossible : 0.5;
+  return {
+    score: totalPossible > 0 ? matchCount / totalPossible : 0.5,
+    matchedInterests,
+  };
 }
 
 /**
@@ -286,10 +330,85 @@ function generateReasoning(
     parts.push(`Prioritized ${timeSlot} activities.`);
   }
 
-  const categories = [...new Set(pois.flatMap((p) => p.category))];
+  const categories = Array.from(new Set(pois.flatMap((p) => p.category)));
   parts.push(`Found ${pois.length} places across categories: ${categories.slice(0, 5).join(", ")}.`);
 
   return parts.join(" ");
+}
+
+/**
+ * Generate specific reasoning for why a POI was selected
+ */
+function generatePOIReason(
+  poi: POI,
+  breakdown: ScoreBreakdown,
+  interests: string[],
+  pace: string,
+  timeSlot?: string
+): string {
+  const reasons: string[] = [];
+
+  // Interest match reason
+  if (breakdown.matchedInterests.length > 0) {
+    const matchedCategories = poi.category.filter((cat) =>
+      breakdown.matchedInterests.some((interest) => {
+        const mapped = INTEREST_CATEGORY_MAP[interest.toLowerCase()] || [interest.toLowerCase()];
+        return mapped.some((m) => cat.toLowerCase().includes(m) || m.includes(cat.toLowerCase()));
+      })
+    );
+    if (matchedCategories.length > 0) {
+      reasons.push(`Matches your interest in ${breakdown.matchedInterests.join(" and ")} (${matchedCategories.join(", ")})`);
+    }
+  }
+
+  // Time-based reason
+  if (timeSlot && poi.best_time === timeSlot) {
+    reasons.push(`Best visited in the ${timeSlot}`);
+  } else if (poi.best_time === "morning") {
+    reasons.push("Best visited in the morning for clear views");
+  } else if (poi.best_time === "evening") {
+    reasons.push("Perfect for an evening visit");
+  }
+
+  // Crowd-based reason
+  if (pace === "relaxed" && poi.crowd_level === "low") {
+    reasons.push("Peaceful spot ideal for a relaxed pace");
+  } else if (pace === "packed" && poi.crowd_level === "high") {
+    reasons.push("Popular attraction - a must-see in Ooty");
+  }
+
+  // Accessibility reason
+  if (poi.accessibility === "easy") {
+    reasons.push("Easy to access");
+  } else if (poi.accessibility === "moderate") {
+    reasons.push("Moderate walking required");
+  }
+
+  // Duration reason
+  if (poi.estimated_duration_mins <= 45) {
+    reasons.push("Quick visit fits well in the schedule");
+  } else if (poi.estimated_duration_mins >= 120) {
+    reasons.push("Worth spending time here for the full experience");
+  }
+
+  // Cost reason
+  if (poi.cost_inr === 0) {
+    reasons.push("Free entry");
+  } else if (poi.cost_inr <= 50) {
+    reasons.push("Budget-friendly entry fee");
+  }
+
+  // Add a tip if available
+  if (poi.tips && poi.tips.length > 0) {
+    reasons.push(`Tip: ${poi.tips[0]}`);
+  }
+
+  // Combine reasons into a coherent sentence
+  if (reasons.length === 0) {
+    return `A popular ${poi.category[0]} spot in Ooty.`;
+  }
+
+  return reasons.slice(0, 3).join(". ") + ".";
 }
 
 /**

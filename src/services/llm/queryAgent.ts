@@ -2,7 +2,6 @@ import type {
   VoiceIntent,
   ConversationContext,
   AgentResponse,
-  Citation,
 } from "@/types";
 import { retrieve } from "@/services/rag/retriever";
 
@@ -83,13 +82,10 @@ export class QueryAgent {
     const { currentItinerary } = context;
 
     // Try to identify what POI they're asking about
-    let targetPOI: string | null = null;
-
     if (currentItinerary) {
       for (const day of currentItinerary.days) {
         for (const block of day.blocks) {
           if (text.includes(block.poi.name.toLowerCase())) {
-            targetPOI = block.poi.name;
             const poi = block.poi;
 
             // Generate explanation based on POI properties and preferences
@@ -171,7 +167,8 @@ export class QueryAgent {
    */
   private async handleWhatIfQuestion(
     intent: VoiceIntent,
-    context: ConversationContext
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _context: ConversationContext
   ): Promise<AgentResponse> {
     const text = intent.rawText.toLowerCase();
 
@@ -350,7 +347,8 @@ export class QueryAgent {
    */
   private async handleGeneralQuery(
     intent: VoiceIntent,
-    context: ConversationContext
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _context: ConversationContext
   ): Promise<AgentResponse> {
     const ragResult = await retrieve(intent.rawText);
 

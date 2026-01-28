@@ -1,11 +1,13 @@
 "use client";
 
 import React from "react";
-import { Calendar, MapPin, Clock } from "lucide-react";
+import { Calendar, MapPin, Clock, Download, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTripStore } from "@/lib/stores/tripStore";
 import { useUIStore } from "@/lib/stores/uiStore";
 import { DayCard } from "./DayCard";
+import { CostBreakdown } from "./CostBreakdown";
+import { exportToPdf, downloadAsHtml } from "@/services/pdf/exportPdf";
 
 interface ItineraryViewProps {
   className?: string;
@@ -39,7 +41,7 @@ export function ItineraryView({ className }: ItineraryViewProps) {
           <div className="space-y-2">
             <h2 className="text-2xl font-semibold">Welcome to Ooty Trip Planner</h2>
             <p className="text-muted-foreground">
-              Tell me about your trip to Ooty, and I'll create a personalized
+              Tell me about your trip to Ooty, and I&apos;ll create a personalized
               itinerary for you. Just click the microphone and start speaking!
             </p>
           </div>
@@ -71,11 +73,31 @@ export function ItineraryView({ className }: ItineraryViewProps) {
               {preferences.travelParty}
             </p>
           </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Clock className="w-4 h-4" />
-            <span>
-              {days.reduce((sum, d) => sum + d.blocks.length, 0)} activities
-            </span>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Clock className="w-4 h-4" />
+              <span>
+                {days.reduce((sum, d) => sum + d.blocks.length, 0)} activities
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => exportToPdf(itinerary)}
+                className="flex items-center gap-1 px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+                title="Export as PDF"
+              >
+                <Download className="w-4 h-4" />
+                <span className="hidden sm:inline">PDF</span>
+              </button>
+              <button
+                onClick={() => downloadAsHtml(itinerary)}
+                className="flex items-center gap-1 px-3 py-1.5 text-sm bg-muted hover:bg-muted/80 rounded-md transition-colors"
+                title="Download HTML"
+              >
+                <FileText className="w-4 h-4" />
+                <span className="hidden sm:inline">HTML</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -98,11 +120,31 @@ export function ItineraryView({ className }: ItineraryViewProps) {
               )}
             </button>
           ))}
+          {/* Cost Summary Tab */}
+          <button
+            onClick={() => setActiveDay(0)}
+            className={cn(
+              "px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap",
+              activeDay === 0
+                ? "bg-amber-500 text-white"
+                : "bg-amber-100 hover:bg-amber-200 text-amber-800"
+            )}
+          >
+            Cost Summary
+          </button>
         </div>
       </div>
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4">
+        {/* Cost Summary View */}
+        {activeDay === 0 && (
+          <div className="transition-opacity duration-200">
+            <CostBreakdown itinerary={itinerary} />
+          </div>
+        )}
+
+        {/* Day Views */}
         {days.map((day) => (
           <div
             key={day.dayNumber}

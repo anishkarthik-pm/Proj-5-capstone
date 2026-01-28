@@ -29,7 +29,7 @@ const initialState = {
   isMobileMenuOpen: false,
 };
 
-export const useUIStore = create<UIStore>((set, get) => ({
+export const useUIStore = create<UIStore>((set) => ({
   ...initialState,
 
   setActiveDay: (activeDay) => set({ activeDay }),

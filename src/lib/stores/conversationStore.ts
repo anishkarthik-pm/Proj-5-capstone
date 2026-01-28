@@ -26,7 +26,7 @@ const initialState = {
   pendingQuestion: null,
 };
 
-export const useConversationStore = create<ConversationStore>((set, get) => ({
+export const useConversationStore = create<ConversationStore>((set) => ({
   ...initialState,
 
   addMessage: (message) =>

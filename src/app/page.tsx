@@ -14,6 +14,7 @@ import { useUIStore } from "@/lib/stores/uiStore";
 import { handleVoiceInput, orchestrator } from "@/services/llm/orchestrator";
 import { speak, stopSpeaking } from "@/services/tts";
 import { initializeRAG } from "@/services/rag";
+import type { Itinerary } from "@/types";
 
 export default function Home() {
   const { itinerary, setItinerary, setLoading, isLoading } = useTripStore();
@@ -58,8 +59,9 @@ export default function Home() {
         addToHistory(response.message, false);
 
         // Update itinerary if returned
-        if (response.data?.itinerary) {
-          setItinerary(response.data.itinerary);
+        const data = response.data as { itinerary?: Itinerary } | undefined;
+        if (data?.itinerary) {
+          setItinerary(data.itinerary);
         }
 
         // Set response for TTS

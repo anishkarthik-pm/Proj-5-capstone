@@ -83,8 +83,6 @@ export function DayCard({ day, className }: DayCardProps) {
             {index > 0 && block.travelTimeFromPrev > 0 && (
               <TravelSegment
                 travelTime={block.travelTimeFromPrev}
-                fromPOI={day.blocks[index - 1].poi.name}
-                toPOI={block.poi.name}
               />
             )}
             <TimeBlockCard block={block} />

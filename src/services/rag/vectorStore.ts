@@ -107,10 +107,10 @@ class VectorStore {
     }
 
     // Normalize by document length
-    const maxFreq = Math.max(...tf.values(), 1);
-    for (const [token, freq] of tf) {
+    const maxFreq = Math.max(...Array.from(tf.values()), 1);
+    Array.from(tf.entries()).forEach(([token, freq]) => {
       tf.set(token, freq / maxFreq);
-    }
+    });
 
     return tf;
   }
@@ -125,16 +125,16 @@ class VectorStore {
     // Count document frequency for each term
     const df = new Map<string, number>();
     for (const doc of this.documents) {
-      const uniqueTokens = new Set(doc.tokens);
-      for (const token of uniqueTokens) {
+      const uniqueTokens = Array.from(new Set(doc.tokens));
+      uniqueTokens.forEach((token) => {
         df.set(token, (df.get(token) || 0) + 1);
-      }
+      });
     }
 
     // Calculate IDF
-    for (const [token, freq] of df) {
+    Array.from(df.entries()).forEach(([token, freq]) => {
       this.idfCache.set(token, Math.log((N + 1) / (freq + 1)) + 1);
-    }
+    });
   }
 
   /**
@@ -149,7 +149,7 @@ class VectorStore {
     let docMagnitude = 0;
 
     // Calculate dot product and query magnitude
-    for (const [token, tf] of queryTF) {
+    Array.from(queryTF.entries()).forEach(([token, tf]) => {
       const idf = this.idfCache.get(token) || 0;
       const queryTFIDF = tf * idf;
       queryMagnitude += queryTFIDF * queryTFIDF;
@@ -157,14 +157,14 @@ class VectorStore {
       const docTF = doc.tokenFrequency.get(token) || 0;
       const docTFIDF = docTF * idf;
       dotProduct += queryTFIDF * docTFIDF;
-    }
+    });
 
     // Calculate document magnitude
-    for (const [token, tf] of doc.tokenFrequency) {
+    Array.from(doc.tokenFrequency.entries()).forEach(([token, tf]) => {
       const idf = this.idfCache.get(token) || 0;
       const docTFIDF = tf * idf;
       docMagnitude += docTFIDF * docTFIDF;
-    }
+    });
 
     // Cosine similarity
     const magnitude = Math.sqrt(queryMagnitude) * Math.sqrt(docMagnitude);

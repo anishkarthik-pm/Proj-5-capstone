@@ -3,7 +3,6 @@
 import React from "react";
 import { ChevronDown, ChevronUp, ExternalLink, BookOpen, MapPin, Cloud } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { useUIStore } from "@/lib/stores/uiStore";
 import { useTripStore } from "@/lib/stores/tripStore";
 import type { Citation } from "@/types";

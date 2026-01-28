@@ -63,6 +63,16 @@ const CLARIFYING_QUESTIONS = [
     },
   },
   {
+    key: "dietaryPreference",
+    question: "For food recommendations during the trip, do you prefer vegetarian or are you open to non-vegetarian options?",
+    extract: (text: string) => {
+      if (/veg|vegetarian|pure veg|no meat|no non-veg/i.test(text)) return "veg";
+      if (/non-veg|non veg|meat|chicken|fish|egg/i.test(text)) return "non-veg";
+      if (/any|both|either|no preference|anything/i.test(text)) return "any";
+      return null;
+    },
+  },
+  {
     key: "specialRequests",
     question: "Any specific places you definitely want to visit, or anything else I should know?",
     extract: (text: string) => {
@@ -101,7 +111,8 @@ export class PlanningAgent {
    */
   async handle(
     intent: VoiceIntent,
-    context: ConversationContext
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _context: ConversationContext
   ): Promise<AgentResponse> {
     // Extract any preferences from the initial request
     this.extractPreferencesFromIntent(intent);
@@ -130,7 +141,8 @@ export class PlanningAgent {
    */
   async processAnswer(
     transcript: string,
-    context: ConversationContext
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _context: ConversationContext
   ): Promise<AgentResponse> {
     // Find which question we're answering
     const lastQuestion = this.state.questionsAsked[this.state.questionsAsked.length - 1];
@@ -257,7 +269,7 @@ export class PlanningAgent {
         };
       }
 
-      // Build the itinerary
+      // Build the itinerary with per-POI reasoning and food preferences
       const itineraryResult = await buildItinerary({
         pois: poiResult.pois,
         numDays: preferences.numDays,
@@ -265,6 +277,8 @@ export class PlanningAgent {
         startTime: "09:00",
         endTime: "20:00",
         travelTimeMatrix: travelTimesData.matrix,
+        poiReasons: poiResult.poiReasons,
+        dietaryPreference: preferences.dietaryPreference,
       });
 
       // Create the full itinerary object
@@ -320,6 +334,7 @@ export class PlanningAgent {
       budget: prefs.budget || "moderate",
       mobility: prefs.mobility || "full",
       travelParty: prefs.travelParty || "couple",
+      dietaryPreference: prefs.dietaryPreference || "any",
       specialRequests: prefs.specialRequests,
     };
   }

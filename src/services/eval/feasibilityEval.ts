@@ -1,4 +1,4 @@
-import type { DayPlan, Itinerary, EvalResult, EvalIssue } from "@/types";
+import type { Itinerary, EvalResult, EvalIssue } from "@/types";
 
 /**
  * Pace-based time limits

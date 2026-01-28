@@ -1,4 +1,4 @@
-import type { Itinerary, EvalResult, EvalIssue, POI } from "@/types";
+import type { Itinerary, EvalResult, EvalIssue } from "@/types";
 import { getAllPOIs } from "@/services/mcp/poiSearch";
 import travelTimesData from "@/data/ooty-travel-times.json";
 

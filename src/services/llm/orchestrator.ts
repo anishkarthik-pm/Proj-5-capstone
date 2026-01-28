@@ -89,7 +89,8 @@ export class Orchestrator {
     this.addMessage("assistant", response.message, intent, response.sources);
 
     // Update state based on response
-    if (response.data?.needsClarification) {
+    const data = response.data as { needsClarification?: boolean; itinerary?: Itinerary } | undefined;
+    if (data?.needsClarification) {
       this.state.isWaitingForClarification = true;
       this.state.context.pendingQuestion = response.message;
     } else {
@@ -98,8 +99,8 @@ export class Orchestrator {
     }
 
     // Update itinerary if returned
-    if (response.data?.itinerary) {
-      this.state.context.currentItinerary = response.data.itinerary as Itinerary;
+    if (data?.itinerary) {
+      this.state.context.currentItinerary = data.itinerary;
     }
 
     return response;
@@ -189,7 +190,8 @@ export class Orchestrator {
   /**
    * Handle unclear intent
    */
-  private async handleUnclearIntent(transcript: string): Promise<AgentResponse> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private async handleUnclearIntent(_transcript: string): Promise<AgentResponse> {
     // Try to be helpful based on context
     if (!this.state.context.currentItinerary) {
       return {
@@ -220,15 +222,16 @@ export class Orchestrator {
     this.addMessage("assistant", response.message);
 
     // Update state
-    if (response.data?.needsClarification) {
+    const responseData = response.data as { needsClarification?: boolean; itinerary?: Itinerary } | undefined;
+    if (responseData?.needsClarification) {
       this.state.context.pendingQuestion = response.message;
     } else {
       this.state.isWaitingForClarification = false;
       this.state.context.pendingQuestion = null;
     }
 
-    if (response.data?.itinerary) {
-      this.state.context.currentItinerary = response.data.itinerary as Itinerary;
+    if (responseData?.itinerary) {
+      this.state.context.currentItinerary = responseData.itinerary;
     }
 
     return response;

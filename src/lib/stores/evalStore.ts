@@ -23,7 +23,7 @@ const initialState = {
   error: null,
 };
 
-export const useEvalStore = create<EvalStore>((set, get) => ({
+export const useEvalStore = create<EvalStore>((set) => ({
   ...initialState,
 
   runEvals: async (itinerary) => {

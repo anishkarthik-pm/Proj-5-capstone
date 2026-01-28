@@ -6,15 +6,11 @@ import { cn } from "@/lib/utils";
 
 interface TravelSegmentProps {
   travelTime: number;
-  fromPOI: string;
-  toPOI: string;
   className?: string;
 }
 
 export function TravelSegment({
   travelTime,
-  fromPOI,
-  toPOI,
   className,
 }: TravelSegmentProps) {
   const isLongTravel = travelTime > 45;

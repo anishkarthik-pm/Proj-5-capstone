@@ -304,7 +304,9 @@
         "Cash preferred, cards accepted",
         "Located on Commissioner's Road"
       ],
-      "source": "local"
+      "source": "local",
+      "dietary": "non-veg",
+      "mealType": "dinner"
     },
     {
       "id": "poi-earl-grey-cafe",
@@ -323,7 +325,9 @@
         "Wi-Fi available",
         "Book window seats for best views"
       ],
-      "source": "local"
+      "source": "local",
+      "dietary": "both",
+      "mealType": "any"
     },
     {
       "id": "poi-adderley",
@@ -342,7 +346,9 @@
         "Beautiful colonial decor",
         "Part of a heritage hotel"
       ],
-      "source": "local"
+      "source": "local",
+      "dietary": "both",
+      "mealType": "snack"
     },
     {
       "id": "poi-sidewalk-cafe",
@@ -361,7 +367,93 @@
         "Pure vegetarian kitchen",
         "Homemade bread is excellent"
       ],
-      "source": "local"
+      "source": "local",
+      "dietary": "veg",
+      "mealType": "lunch"
+    },
+    {
+      "id": "poi-hotel-nahar",
+      "name": "Hotel Nahar Restaurant",
+      "category": ["food", "restaurant"],
+      "coordinates": { "lat": 11.4095, "lng": 76.6940 },
+      "estimated_duration_mins": 60,
+      "best_time": "any",
+      "crowd_level": "medium",
+      "accessibility": "easy",
+      "cost_inr": 300,
+      "description": "Popular multi-cuisine restaurant known for authentic South Indian breakfast and North Indian curries. Good for families looking for diverse options.",
+      "tips": [
+        "Try the masala dosa for breakfast",
+        "Lunch thali is value for money",
+        "Has both AC and non-AC sections",
+        "Near the bus stand - easy to locate"
+      ],
+      "source": "local",
+      "dietary": "both",
+      "mealType": "any"
+    },
+    {
+      "id": "poi-hyderabad-biryani",
+      "name": "Hyderabad Biryani House",
+      "category": ["food", "restaurant"],
+      "coordinates": { "lat": 11.4085, "lng": 76.6935 },
+      "estimated_duration_mins": 45,
+      "best_time": "afternoon",
+      "crowd_level": "medium",
+      "accessibility": "easy",
+      "cost_inr": 250,
+      "description": "Authentic Hyderabadi biryani restaurant. Popular among locals and tourists for flavorful biryanis and kebabs.",
+      "tips": [
+        "Chicken biryani is the specialty",
+        "Order early - portions run out",
+        "Takeaway available",
+        "Limited seating"
+      ],
+      "source": "local",
+      "dietary": "non-veg",
+      "mealType": "lunch"
+    },
+    {
+      "id": "poi-garden-restaurant",
+      "name": "Garden Restaurant",
+      "category": ["food", "restaurant", "vegetarian"],
+      "coordinates": { "lat": 11.4080, "lng": 76.6950 },
+      "estimated_duration_mins": 60,
+      "best_time": "evening",
+      "crowd_level": "low",
+      "accessibility": "easy",
+      "cost_inr": 200,
+      "description": "Pure vegetarian restaurant with garden seating. Serves South Indian, North Indian and Chinese vegetarian dishes. Family-friendly atmosphere.",
+      "tips": [
+        "Outdoor seating has nice garden views",
+        "Special thali meals available",
+        "Good for kids with varied menu",
+        "Reasonable prices"
+      ],
+      "source": "local",
+      "dietary": "veg",
+      "mealType": "dinner"
+    },
+    {
+      "id": "poi-willy-restaurant",
+      "name": "Willy's Restaurant",
+      "category": ["food", "restaurant"],
+      "coordinates": { "lat": 11.4090, "lng": 76.6960 },
+      "estimated_duration_mins": 60,
+      "best_time": "evening",
+      "crowd_level": "medium",
+      "accessibility": "easy",
+      "cost_inr": 350,
+      "description": "Popular family restaurant serving Indian, Chinese, and Continental cuisine. Known for grilled chicken and sizzlers. Cozy ambiance for dinner.",
+      "tips": [
+        "Sizzlers are popular here",
+        "Reservation recommended for dinner",
+        "Good variety of desserts",
+        "Located near the lake"
+      ],
+      "source": "local",
+      "dietary": "both",
+      "mealType": "dinner"
     },
     {
       "id": "poi-boat-house",

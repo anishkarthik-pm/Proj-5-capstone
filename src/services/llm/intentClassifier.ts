@@ -43,6 +43,13 @@ const EDIT_KEYWORDS = [
   "more packed",
   "cancel",
   "skip",
+  "shuffle",
+  "reorder",
+  "rearrange",
+  "drop",
+  "take out",
+  "put in",
+  "include",
 ];
 
 const QUERY_KEYWORDS = [
@@ -112,10 +119,10 @@ const TIME_SLOT_PATTERNS = {
 
 // Action patterns for edits
 const ACTION_PATTERNS = {
-  add: /add|include|put|insert/i,
-  remove: /remove|delete|cancel|skip|drop/i,
-  swap: /swap|switch|exchange|replace.*with/i,
-  replace: /replace|change.*to|instead of/i,
+  add: /add|include|put\s+in|insert/i,
+  remove: /remove|delete|cancel|skip|drop|take\s+out/i,
+  swap: /swap|switch|exchange|shuffle|reorder|rearrange/i,
+  replace: /replace|change.*to|instead\s+of|substitute/i,
   move: /move|shift|reschedule/i,
 };
 
@@ -157,6 +164,13 @@ export async function classifyIntent(
   // Boost edit score if day/time mentioned and not a query
   if ((dayNumber || timeSlot) && !normalizedText.includes("why")) {
     scores.edit *= 1.3;
+  }
+
+  // Strongly boost edit score if action pattern is detected
+  if (action) {
+    scores.edit *= 1.5;
+    // Reduce plan score when clear edit action is present
+    scores.plan *= 0.5;
   }
 
   // Check for negative responses

@@ -1,4 +1,4 @@
-import type { Itinerary, EvalResult, EvalIssue, DayPlan, TimeBlock } from "@/types";
+import type { Itinerary, EvalResult, EvalIssue, TimeBlock } from "@/types";
 
 /**
  * Evaluate the correctness of an edit operation
@@ -27,8 +27,9 @@ export function evaluateEditCorrectness(
     );
 
     if (unintendedDayChanges.length > 0) {
+      const affectedDays = Array.from(new Set(unintendedDayChanges.map((c) => c.dayNumber)));
       issues.push({
-        issue: `Unintended changes detected in days: ${[...new Set(unintendedDayChanges.map((c) => c.dayNumber))].join(", ")}`,
+        issue: `Unintended changes detected in days: ${affectedDays.join(", ")}`,
         severity: "high",
       });
       score -= 20;
@@ -142,7 +143,7 @@ function detectChanges(before: Itinerary, after: Itinerary): Change[] {
   }
 
   // Find removed blocks
-  for (const [id, { day, block }] of beforeBlocks) {
+  Array.from(beforeBlocks.entries()).forEach(([id, { day, block }]) => {
     if (!afterBlocks.has(id)) {
       changes.push({
         type: "remove",
@@ -151,10 +152,10 @@ function detectChanges(before: Itinerary, after: Itinerary): Change[] {
         description: `Removed ${block.poi.name} from Day ${day}`,
       });
     }
-  }
+  });
 
   // Find added blocks
-  for (const [id, { day, block }] of afterBlocks) {
+  Array.from(afterBlocks.entries()).forEach(([id, { day, block }]) => {
     if (!beforeBlocks.has(id)) {
       changes.push({
         type: "add",
@@ -163,10 +164,10 @@ function detectChanges(before: Itinerary, after: Itinerary): Change[] {
         description: `Added ${block.poi.name} to Day ${day}`,
       });
     }
-  }
+  });
 
   // Find modified blocks
-  for (const [id, afterData] of afterBlocks) {
+  Array.from(afterBlocks.entries()).forEach(([id, afterData]) => {
     const beforeData = beforeBlocks.get(id);
     if (beforeData) {
       // Check if POI changed
@@ -200,7 +201,7 @@ function detectChanges(before: Itinerary, after: Itinerary): Change[] {
         });
       }
     }
-  }
+  });
 
   return changes;
 }

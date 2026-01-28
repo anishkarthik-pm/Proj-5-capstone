@@ -262,11 +262,45 @@ export class EditAgent {
     text: string,
     itinerary: Itinerary
   ): EditOperation | null {
-    // For now, just describe the swap intent
-    // A full implementation would parse what to swap with what
+    const day = itinerary.days[dayNumber - 1];
+    if (!day || day.blocks.length < 2) {
+      return null;
+    }
+
+    // Check for specific swap patterns
+    // "swap morning and afternoon"
+    const timeSwapMatch = text.match(/(morning|afternoon|evening)\s+(?:and|with)\s+(morning|afternoon|evening)/i);
+    if (timeSwapMatch) {
+      const slot1 = timeSwapMatch[1].toLowerCase() as "morning" | "afternoon" | "evening";
+      const slot2 = timeSwapMatch[2].toLowerCase() as "morning" | "afternoon" | "evening";
+      const block1 = day.blocks.find(b => b.timeSlot === slot1);
+      const block2 = day.blocks.find(b => b.timeSlot === slot2);
+
+      if (block1 && block2) {
+        return {
+          type: "swap",
+          dayNumber,
+          blockId: block1.id,
+          targetDayNumber: dayNumber, // Same day swap
+          description: `Swap ${slot1} and ${slot2} activities on Day ${dayNumber}`,
+        };
+      }
+    }
+
+    // "shuffle" or "reorder" - reverse the order of activities
+    if (/shuffle|reorder|rearrange/i.test(text)) {
+      return {
+        type: "swap",
+        dayNumber,
+        description: `Shuffle activities on Day ${dayNumber}`,
+      };
+    }
+
+    // Default: swap first two activities
     return {
       type: "swap",
       dayNumber,
+      blockId: day.blocks[0].id,
       description: `Swap activities on Day ${dayNumber}`,
     };
   }
@@ -433,6 +467,72 @@ export class EditAgent {
               data: {
                 itinerary: updatedItinerary,
                 changedBlocks: [operation.blockId],
+              },
+              shouldSpeak: true,
+            };
+          }
+        }
+        break;
+
+      case "swap":
+        if (day.blocks.length >= 2) {
+          // Check if it's a shuffle/reorder (reverse order)
+          if (operation.description.includes("Shuffle")) {
+            // Reverse the order of activities
+            day.blocks.reverse();
+            this.recalculateTimes(day);
+            updatedItinerary.lastModified = new Date();
+            updatedItinerary.version++;
+
+            return {
+              success: true,
+              message: `I've shuffled the activities on Day ${operation.dayNumber}. The order is now: ${day.blocks.map(b => b.poi.name).join(", ")}.`,
+              data: {
+                itinerary: updatedItinerary,
+                changedBlocks: day.blocks.map(b => b.id),
+              },
+              shouldSpeak: true,
+            };
+          }
+
+          // Swap specific blocks (morning/afternoon or first two)
+          if (operation.blockId) {
+            const idx1 = day.blocks.findIndex(b => b.id === operation.blockId);
+            const idx2 = idx1 === 0 ? 1 : 0; // Swap with first or second
+
+            if (idx1 !== -1 && day.blocks.length > 1 && idx1 !== idx2) {
+              const temp = day.blocks[idx1];
+              day.blocks[idx1] = day.blocks[idx2];
+              day.blocks[idx2] = temp;
+              this.recalculateTimes(day);
+              updatedItinerary.lastModified = new Date();
+              updatedItinerary.version++;
+
+              return {
+                success: true,
+                message: `I've swapped ${day.blocks[idx1].poi.name} and ${day.blocks[idx2].poi.name} on Day ${operation.dayNumber}.`,
+                data: {
+                  itinerary: updatedItinerary,
+                  changedBlocks: [day.blocks[idx1].id, day.blocks[idx2].id],
+                },
+                shouldSpeak: true,
+              };
+            }
+          } else {
+            // Default: swap first two
+            const temp = day.blocks[0];
+            day.blocks[0] = day.blocks[1];
+            day.blocks[1] = temp;
+            this.recalculateTimes(day);
+            updatedItinerary.lastModified = new Date();
+            updatedItinerary.version++;
+
+            return {
+              success: true,
+              message: `I've swapped the first two activities on Day ${operation.dayNumber}: ${day.blocks[0].poi.name} and ${day.blocks[1].poi.name}.`,
+              data: {
+                itinerary: updatedItinerary,
+                changedBlocks: [day.blocks[0].id, day.blocks[1].id],
               },
               shouldSpeak: true,
             };
