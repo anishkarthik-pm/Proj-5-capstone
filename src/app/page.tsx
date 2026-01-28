@@ -5,6 +5,7 @@ import { Mountain, RefreshCw, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { VoiceInput } from "@/components/voice/VoiceInput";
 import { VoiceOutput } from "@/components/voice/VoiceOutput";
+import { TextInput } from "@/components/voice/TextInput";
 import { ItineraryView } from "@/components/itinerary/ItineraryView";
 import { SourcesPanel } from "@/components/itinerary/SourcesPanel";
 import { EmailDialog } from "@/components/email/EmailDialog";
@@ -120,6 +121,16 @@ export default function Home() {
     ]
   );
 
+  // Handle text input submission
+  const handleTextSubmit = useCallback(
+    async (text: string) => {
+      logInfo("user", `Text input: "${text}"`);
+      // Reuse the same handler as voice input
+      await handleTranscriptComplete(text);
+    },
+    [handleTranscriptComplete, logInfo]
+  );
+
   // Handle new trip
   const handleNewTrip = useCallback(() => {
     logInfo("system", "Starting new trip");
@@ -200,6 +211,17 @@ export default function Home() {
                 onTranscriptComplete={handleTranscriptComplete}
                 disabled={isProcessing || isLoading}
               />
+              {/* Text Input */}
+              <div className="mt-4">
+                <div className="text-xs text-muted-foreground text-center mb-2">
+                  or type your message
+                </div>
+                <TextInput
+                  onSubmit={handleTextSubmit}
+                  disabled={isProcessing || isLoading}
+                  placeholder="Type here to test..."
+                />
+              </div>
             </div>
             <div className="border-t p-4">
               <VoiceOutput autoSpeak={false} />
@@ -215,13 +237,22 @@ export default function Home() {
           </div>
 
           {/* Fixed Voice Panel at Bottom */}
-          <div className="flex-shrink-0 border-t bg-background p-4 space-y-4">
-            <VoiceOutput autoSpeak={false} className="max-h-24 overflow-y-auto" />
-            <VoiceInput
-              onTranscriptComplete={handleTranscriptComplete}
-              disabled={isProcessing || isLoading}
-              className="pb-safe"
-            />
+          <div className="flex-shrink-0 border-t bg-background p-4 space-y-3">
+            <VoiceOutput autoSpeak={false} className="max-h-20 overflow-y-auto" />
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <TextInput
+                  onSubmit={handleTextSubmit}
+                  disabled={isProcessing || isLoading}
+                  placeholder="Type or use voice..."
+                />
+              </div>
+              <VoiceInput
+                onTranscriptComplete={handleTranscriptComplete}
+                disabled={isProcessing || isLoading}
+                className="pb-safe"
+              />
+            </div>
           </div>
         </div>
       </main>
