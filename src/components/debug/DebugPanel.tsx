@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect, useState, useCallback } from "react";
 import {
   Bug,
   X,
@@ -17,6 +17,9 @@ import {
   User,
   ChevronDown,
   ClipboardCheck,
+  Key,
+  RefreshCw,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,6 +29,7 @@ import {
   type DebugLogEntry,
 } from "@/lib/stores/debugStore";
 import { cn } from "@/lib/utils";
+import { validateApiKey } from "@/services/llm/responseEnhancer";
 
 // Icon mapping for log levels
 const levelIcons: Record<LogLevel, React.ReactNode> = {
@@ -157,6 +161,85 @@ function LogEntry({ entry }: LogEntryProps) {
   );
 }
 
+// API Status indicator component
+function ApiStatusIndicator() {
+  const [status, setStatus] = useState<{
+    checking: boolean;
+    valid: boolean | null;
+    message: string;
+    model?: string;
+  }>({
+    checking: true,
+    valid: null,
+    message: "Checking API key...",
+  });
+
+  const checkApiKey = useCallback(async () => {
+    setStatus((prev) => ({ ...prev, checking: true }));
+    try {
+      const result = await validateApiKey();
+      setStatus({
+        checking: false,
+        valid: result.valid,
+        message: result.message,
+        model: result.model,
+      });
+    } catch {
+      setStatus({
+        checking: false,
+        valid: false,
+        message: "Failed to validate API key",
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    checkApiKey();
+  }, [checkApiKey]);
+
+  return (
+    <div className="px-4 py-2 border-b bg-muted/30">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Key className="w-4 h-4 text-muted-foreground" />
+          <span className="text-xs font-medium">Gemini API</span>
+        </div>
+        <div className="flex items-center gap-2">
+          {status.checking ? (
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              Checking...
+            </span>
+          ) : status.valid ? (
+            <span className="flex items-center gap-1 text-xs text-green-600">
+              <CheckCircle className="w-3 h-3" />
+              Connected
+              {status.model && (
+                <span className="text-muted-foreground">({status.model})</span>
+              )}
+            </span>
+          ) : (
+            <span className="flex items-center gap-1 text-xs text-red-600">
+              <AlertCircle className="w-3 h-3" />
+              {status.message}
+            </span>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={checkApiKey}
+            className="h-6 w-6 p-0"
+            disabled={status.checking}
+            title="Recheck API key"
+          >
+            <RefreshCw className={cn("w-3 h-3", status.checking && "animate-spin")} />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function DebugPanel() {
   const { logs, isOpen, filter, setOpen, setFilter, clearLogs } = useDebugStore();
 
@@ -216,6 +299,9 @@ export function DebugPanel() {
           </Button>
         </div>
       </div>
+
+      {/* API Status */}
+      <ApiStatusIndicator />
 
       {/* Filter tabs */}
       <div className="flex items-center gap-1 px-4 py-2 border-b overflow-x-auto">

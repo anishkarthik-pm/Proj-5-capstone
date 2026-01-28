@@ -11,7 +11,7 @@ import { searchPOIs } from "@/services/mcp/poiSearch";
 import travelTimesData from "@/data/ooty-travel-times.json";
 
 interface EditOperation {
-  type: "add" | "remove" | "swap" | "replace" | "move" | "adjust_pace";
+  type: "add" | "remove" | "swap" | "replace" | "move" | "adjust_pace" | "swap_days" | "suggest";
   dayNumber: number;
   blockId?: string;
   timeSlot?: "morning" | "afternoon" | "evening";
@@ -126,7 +126,30 @@ export class EditAgent {
     }
 
     if (action === "swap" || /swap|switch|exchange/.test(text)) {
+      // Check if swapping entire days (e.g., "swap day 1 and day 2")
+      const daySwapMatch = text.match(/(?:swap|switch|exchange)\s+day\s*(\d+)\s+(?:and|with)\s+day\s*(\d+)/i);
+      if (daySwapMatch) {
+        const day1 = parseInt(daySwapMatch[1], 10);
+        const day2 = parseInt(daySwapMatch[2], 10);
+        if (day1 >= 1 && day1 <= itinerary.days.length && day2 >= 1 && day2 <= itinerary.days.length) {
+          return {
+            type: "swap_days",
+            dayNumber: day1,
+            targetDayNumber: day2,
+            description: `Swap Day ${day1} and Day ${day2}`,
+          };
+        }
+      }
       return this.createSwapOperation(targetDay, text, itinerary);
+    }
+
+    // Check for suggestion requests
+    if (/suggest|recommend|what else|other places|more options|ideas/.test(text)) {
+      return {
+        type: "suggest",
+        dayNumber: targetDay,
+        description: `Suggest places for Day ${targetDay}`,
+      };
     }
 
     if (action === "replace" || /replace|instead|change.*to/.test(text)) {
@@ -568,6 +591,86 @@ export class EditAgent {
         }
         // Handle making it more packed (would search for additional POIs)
         break;
+
+      case "swap_days":
+        if (operation.targetDayNumber) {
+          const day1Idx = operation.dayNumber - 1;
+          const day2Idx = operation.targetDayNumber - 1;
+
+          if (day1Idx >= 0 && day2Idx >= 0 &&
+              day1Idx < updatedItinerary.days.length &&
+              day2Idx < updatedItinerary.days.length) {
+            // Swap the days' blocks and themes
+            const day1 = updatedItinerary.days[day1Idx];
+            const day2 = updatedItinerary.days[day2Idx];
+
+            // Swap blocks
+            const tempBlocks = day1.blocks;
+            day1.blocks = day2.blocks;
+            day2.blocks = tempBlocks;
+
+            // Swap themes
+            const tempTheme = day1.theme;
+            day1.theme = day2.theme;
+            day2.theme = tempTheme;
+
+            // Recalculate times for both days
+            this.recalculateTimes(day1);
+            this.recalculateTimes(day2);
+
+            updatedItinerary.lastModified = new Date();
+            updatedItinerary.version++;
+
+            const day1Activities = day1.blocks.map(b => b.poi.name).join(", ");
+            const day2Activities = day2.blocks.map(b => b.poi.name).join(", ");
+
+            return {
+              success: true,
+              message: `Done! I've swapped Day ${operation.dayNumber} and Day ${operation.targetDayNumber}. Day ${operation.dayNumber} now has: ${day1Activities}. Day ${operation.targetDayNumber} now has: ${day2Activities}.`,
+              data: {
+                itinerary: updatedItinerary,
+                changedBlocks: [...day1.blocks.map(b => b.id), ...day2.blocks.map(b => b.id)],
+              },
+              shouldSpeak: true,
+            };
+          }
+        }
+        break;
+
+      case "suggest":
+        // Search for places not in the itinerary
+        const existingPOIIds = updatedItinerary.days
+          .flatMap((d) => d.blocks)
+          .map((b) => b.poi.id);
+
+        const suggestResult = await searchPOIs({
+          city: "ooty",
+          interests: updatedItinerary.preferences.interests || ["nature"],
+          pace: updatedItinerary.preferences.pace,
+          excludeIds: existingPOIIds,
+          maxResults: 3,
+        });
+
+        if (suggestResult.pois && suggestResult.pois.length > 0) {
+          const suggestions = suggestResult.pois
+            .map((poi) => `${poi.name} (${poi.category.join(", ")})`)
+            .join(", ");
+
+          return {
+            success: true,
+            message: `Here are some places you might enjoy that aren't in your itinerary yet: ${suggestions}. Would you like me to add any of these? Just say "add [place name] to Day [number]".`,
+            data: {
+              suggestions: suggestResult.pois,
+            },
+            shouldSpeak: true,
+          };
+        } else {
+          return {
+            success: true,
+            message: "I've already included most of the great spots in Ooty! Your itinerary is quite comprehensive. Would you like to replace any existing activity instead?",
+            shouldSpeak: true,
+          };
+        }
     }
 
     return {
