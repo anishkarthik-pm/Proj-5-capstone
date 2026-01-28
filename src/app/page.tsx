@@ -15,10 +15,32 @@ import { useVoiceStore } from "@/lib/stores/voiceStore";
 import { useConversationStore } from "@/lib/stores/conversationStore";
 import { useUIStore } from "@/lib/stores/uiStore";
 import { useDebugStore } from "@/lib/stores/debugStore";
-import { handleVoiceInput, orchestrator } from "@/services/llm/orchestrator";
+// LLM calls go through API routes (not direct imports) for Vercel compatibility
+async function processWithOrchestrator(transcript: string) {
+  const response = await fetch("/api/orchestrator", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "process", transcript }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.details || error.error || "Failed to process");
+  }
+
+  const data = await response.json();
+  return { response: data.response, itinerary: data.itinerary };
+}
+
+async function resetOrchestrator() {
+  await fetch("/api/orchestrator", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "reset" }),
+  });
+}
 import { speak, stopSpeaking } from "@/services/tts";
 import { initializeRAG } from "@/services/rag";
-import type { Itinerary } from "@/types";
 
 export default function Home() {
   const { itinerary, setItinerary, setLoading, isLoading } = useTripStore();
@@ -59,11 +81,13 @@ export default function Home() {
       setLoading(true);
 
       try {
-        // Process with orchestrator
+        // Process with orchestrator via API route
         logInfo("system", "Processing with orchestrator...");
         const startTime = Date.now();
-        const response = await handleVoiceInput(transcript);
+        const result = await processWithOrchestrator(transcript);
         const duration = Date.now() - startTime;
+
+        const response = result.response;
 
         logSuccess("system", `Orchestrator responded in ${duration}ms`, {
           intent: response.data,
@@ -78,11 +102,10 @@ export default function Home() {
         addToHistory(response.message, false);
 
         // Update itinerary if returned
-        const data = response.data as { itinerary?: Itinerary } | undefined;
-        if (data?.itinerary) {
-          setItinerary(data.itinerary);
+        if (result.itinerary) {
+          setItinerary(result.itinerary);
           logSuccess("system", "Itinerary updated", {
-            days: data.itinerary.days.length,
+            days: result.itinerary.days.length,
           });
         }
 
@@ -132,9 +155,9 @@ export default function Home() {
   );
 
   // Handle new trip
-  const handleNewTrip = useCallback(() => {
+  const handleNewTrip = useCallback(async () => {
     logInfo("system", "Starting new trip");
-    orchestrator.reset();
+    await resetOrchestrator();
     setItinerary(null);
     setCurrentResponse("");
     addMessage({

@@ -29,7 +29,28 @@ import {
   type DebugLogEntry,
 } from "@/lib/stores/debugStore";
 import { cn } from "@/lib/utils";
-import { validateApiKey } from "@/services/llm/responseEnhancer";
+
+// Use API route for validation (not direct import) for Vercel Edge compatibility
+async function validateApiKey(): Promise<{
+  valid: boolean;
+  message: string;
+  model?: string;
+}> {
+  try {
+    const response = await fetch("/api/validate-key");
+    const data = await response.json();
+    return {
+      valid: data.valid,
+      message: data.message,
+      model: data.model,
+    };
+  } catch (error) {
+    return {
+      valid: false,
+      message: `Connection error: ${error instanceof Error ? error.message : "Unknown"}`,
+    };
+  }
+}
 
 // Icon mapping for log levels
 const levelIcons: Record<LogLevel, React.ReactNode> = {

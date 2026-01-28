@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
+// Force Node.js runtime - Gemini SDK doesn't work in Edge
+export const runtime = "nodejs";
+
 // Types
 interface Message {
   role: "user" | "assistant" | "system";
