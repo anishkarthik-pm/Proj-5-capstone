@@ -16,6 +16,7 @@ import {
   Settings,
   User,
   ChevronDown,
+  ClipboardCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,6 +43,7 @@ const categoryIcons: Record<LogCategory, React.ReactNode> = {
   n8n: <Mail className="w-3 h-3" />,
   system: <Settings className="w-3 h-3" />,
   user: <User className="w-3 h-3" />,
+  eval: <ClipboardCheck className="w-3 h-3" />,
 };
 
 // Category colors
@@ -52,6 +54,7 @@ const categoryColors: Record<LogCategory, string> = {
   n8n: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
   system: "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300",
   user: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300",
+  eval: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300",
 };
 
 // Level background colors for the log entry
@@ -216,7 +219,7 @@ export function DebugPanel() {
 
       {/* Filter tabs */}
       <div className="flex items-center gap-1 px-4 py-2 border-b overflow-x-auto">
-        {(["all", "api", "llm", "voice", "n8n", "system", "user"] as const).map(
+        {(["all", "api", "llm", "voice", "eval", "n8n", "system", "user"] as const).map(
           (cat) => (
             <button
               key={cat}

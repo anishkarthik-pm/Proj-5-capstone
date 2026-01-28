@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
-import { Calendar, MapPin, Clock, Download, FileText } from "lucide-react";
+import React, { useState } from "react";
+import { Calendar, MapPin, Clock, Download, FileText, BookOpen, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTripStore } from "@/lib/stores/tripStore";
 import { useUIStore } from "@/lib/stores/uiStore";
@@ -16,6 +16,7 @@ interface ItineraryViewProps {
 export function ItineraryView({ className }: ItineraryViewProps) {
   const { itinerary, isLoading } = useTripStore();
   const { activeDay, setActiveDay } = useUIStore();
+  const [showSources, setShowSources] = useState(false);
 
   if (isLoading) {
     return (
@@ -133,6 +134,51 @@ export function ItineraryView({ className }: ItineraryViewProps) {
             Cost Summary
           </button>
         </div>
+
+        {/* Sources Panel Toggle */}
+        {itinerary.sources && itinerary.sources.length > 0 && (
+          <div className="mt-3 border-t pt-3">
+            <button
+              onClick={() => setShowSources(!showSources)}
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <BookOpen className="w-4 h-4" />
+              <span>Data Sources ({itinerary.sources.length})</span>
+              {showSources ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+
+            {showSources && (
+              <div className="mt-2 p-3 bg-muted/50 rounded-lg text-sm space-y-2">
+                <p className="text-xs text-muted-foreground mb-2">
+                  This itinerary is grounded in the following data sources:
+                </p>
+                {itinerary.sources.map((citation, idx) => (
+                  <div key={idx} className="flex items-start gap-2 p-2 bg-background rounded border">
+                    <span className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center">
+                      {idx + 1}
+                    </span>
+                    <div className="flex-1">
+                      <p className="text-foreground">{citation.text}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {citation.source}
+                        {citation.url && (
+                          <a
+                            href={citation.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="ml-2 text-primary hover:underline"
+                          >
+                            Learn more →
+                          </a>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Content */}

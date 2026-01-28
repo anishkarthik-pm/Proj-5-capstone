@@ -1,9 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Turbopack config (Next.js 16+ default)
-  turbopack: {},
+  // Enable standalone output for Docker deployment
+  output: 'standalone',
 
-  // Webpack config (fallback for production builds)
+  // Webpack config
   webpack: (config) => {
     // Handle raw file imports for markdown
     config.module.rules.push({
@@ -11,6 +11,16 @@ const nextConfig = {
       type: 'asset/source',
     });
     return config;
+  },
+
+  // Image optimization configuration
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+    ],
   },
 };
 

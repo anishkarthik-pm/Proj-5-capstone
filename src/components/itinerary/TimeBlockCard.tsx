@@ -185,18 +185,32 @@ export function TimeBlockCard({ block, className, onEdit }: TimeBlockCardProps) 
             </div>
           )}
 
-          {/* Reasoning */}
+          {/* Reasoning with Citation */}
           {block.reasoning && (
-            <div className="mt-3 p-2 bg-primary/5 rounded text-sm">
-              <span className="font-medium">Why this place: </span>
+            <div className="mt-3 p-2 bg-primary/5 rounded text-sm border-l-2 border-primary">
+              <span className="font-medium text-primary">Why this place: </span>
               {block.reasoning}
+              <div className="mt-1 text-xs text-muted-foreground flex items-center gap-1">
+                <span className="px-1.5 py-0.5 bg-muted rounded">
+                  Source: {poi.source === "osm" ? "OpenStreetMap" : poi.source === "wikivoyage" ? "Wikivoyage" : "Local Data"}
+                </span>
+              </div>
             </div>
           )}
 
           {/* Notes */}
           {block.notes && (
-            <div className="mt-3 text-sm italic text-muted-foreground">
+            <div className="mt-3 text-sm italic text-muted-foreground border-l-2 border-muted pl-2">
               Note: {block.notes}
+            </div>
+          )}
+
+          {/* POI Source Badge */}
+          {!block.reasoning && (
+            <div className="mt-3 text-xs text-muted-foreground">
+              <span className="px-1.5 py-0.5 bg-muted rounded">
+                Data: {poi.source === "osm" ? "OpenStreetMap" : poi.source === "wikivoyage" ? "Wikivoyage" : "Local Data"}
+              </span>
             </div>
           )}
         </div>

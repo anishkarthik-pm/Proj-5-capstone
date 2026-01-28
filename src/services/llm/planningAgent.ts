@@ -7,13 +7,15 @@ import type {
 } from "@/types";
 import { searchPOIs } from "@/services/mcp/poiSearch";
 import { buildItinerary } from "@/services/mcp/itineraryBuilder";
+import { getSeasonInfo } from "@/services/mcp/weatherAdjustment";
 import travelTimesData from "@/data/ooty-travel-times.json";
 
-// Clarifying questions to gather trip preferences
+// Clarifying questions to gather trip preferences (max 6)
 const CLARIFYING_QUESTIONS = [
   {
     key: "numDays",
     question: "How many days are you planning to stay in Ooty?",
+    priority: 1, // Required
     extract: (text: string) => {
       const match = text.match(/(\d+)\s*(?:day|days)/i);
       return match ? parseInt(match[1], 10) : null;
@@ -21,62 +23,58 @@ const CLARIFYING_QUESTIONS = [
   },
   {
     key: "pace",
-    question: "Do you prefer a relaxed pace with fewer activities, a moderate pace, or a packed schedule seeing as much as possible?",
+    question: "Do you prefer a relaxed pace with fewer activities, or a packed schedule seeing as much as possible?",
+    priority: 1, // Required
     extract: (text: string) => {
-      if (/relax|easy|slow|leisurely/i.test(text)) return "relaxed";
-      if (/pack|busy|full|lots|many/i.test(text)) return "packed";
-      if (/moderate|normal|regular|balanced/i.test(text)) return "moderate";
+      if (/relax|easy|slow|leisurely|chill/i.test(text)) return "relaxed";
+      if (/pack|busy|full|lots|many|maximum/i.test(text)) return "packed";
+      if (/moderate|normal|regular|balanced|mix/i.test(text)) return "moderate";
       return null;
     },
   },
   {
     key: "interests",
     question: "What interests you most - nature and scenic views, food and tea, culture and heritage, or adventure activities?",
+    priority: 1, // Required
     extract: (text: string) => {
       const interests: string[] = [];
-      if (/nature|scenic|view|landscape|garden/i.test(text)) interests.push("nature");
-      if (/food|tea|eat|restaurant|chocolate/i.test(text)) interests.push("food");
-      if (/culture|heritage|history|museum|church/i.test(text)) interests.push("culture");
-      if (/adventure|trek|hike|activity/i.test(text)) interests.push("adventure");
-      if (/relax|peaceful|quiet/i.test(text)) interests.push("relaxation");
+      if (/nature|scenic|view|landscape|garden|mountain/i.test(text)) interests.push("nature");
+      if (/food|tea|eat|restaurant|chocolate|cuisine/i.test(text)) interests.push("food");
+      if (/culture|heritage|history|museum|church|temple/i.test(text)) interests.push("culture");
+      if (/adventure|trek|hike|activity|sport/i.test(text)) interests.push("adventure");
+      if (/relax|peaceful|quiet|spa/i.test(text)) interests.push("relaxation");
       return interests.length > 0 ? interests : null;
     },
   },
   {
     key: "travelParty",
-    question: "Who are you traveling with - solo, as a couple, with family, or a group?",
+    question: "Who are you traveling with - solo, couple, family with kids, or a group of friends?",
+    priority: 2, // Optional but helpful
     extract: (text: string) => {
       if (/solo|alone|myself|by myself/i.test(text)) return "solo";
       if (/couple|partner|spouse|romantic|two of us/i.test(text)) return "couple";
-      if (/family|kids|children|parents/i.test(text)) return "family";
+      if (/family|kids|children|parents|elderly/i.test(text)) return "family";
       if (/group|friends/i.test(text)) return "group";
       return null;
     },
   },
   {
-    key: "mobility",
-    question: "Any mobility constraints I should consider? For example, difficulty with stairs or long walks?",
-    extract: (text: string) => {
-      if (/no|none|fine|good|full/i.test(text)) return "full";
-      if (/limited|difficult|senior|elderly|wheelchair|mobility issue/i.test(text)) return "limited";
-      return "full"; // Default to full mobility
-    },
-  },
-  {
     key: "dietaryPreference",
-    question: "For food recommendations during the trip, do you prefer vegetarian or are you open to non-vegetarian options?",
+    question: "For food spots, do you prefer vegetarian only, or are you open to non-veg options?",
+    priority: 2, // Optional
     extract: (text: string) => {
       if (/veg|vegetarian|pure veg|no meat|no non-veg/i.test(text)) return "veg";
       if (/non-veg|non veg|meat|chicken|fish|egg/i.test(text)) return "non-veg";
-      if (/any|both|either|no preference|anything/i.test(text)) return "any";
+      if (/any|both|either|no preference|anything|don't mind/i.test(text)) return "any";
       return null;
     },
   },
   {
     key: "specialRequests",
-    question: "Any specific places you definitely want to visit, or anything else I should know?",
+    question: "Any specific places you definitely want to visit or any constraints I should know about?",
+    priority: 3, // Optional
     extract: (text: string) => {
-      if (/no|none|nothing|that's it|nope/i.test(text)) return "";
+      if (/no|none|nothing|that's it|nope|not really/i.test(text)) return "";
       return text;
     },
   },
@@ -88,6 +86,7 @@ interface PlanningState {
   preferences: Partial<TripPreferences>;
   questionsAsked: string[];
   clarificationCount: number;
+  awaitingConfirmation: boolean;
 }
 
 /**
@@ -103,6 +102,7 @@ export class PlanningAgent {
       },
       questionsAsked: [],
       clarificationCount: 0,
+      awaitingConfirmation: false,
     };
   }
 
@@ -117,7 +117,7 @@ export class PlanningAgent {
     // Extract any preferences from the initial request
     this.extractPreferencesFromIntent(intent);
 
-    // Check if we have enough information to generate itinerary
+    // Check if we have enough information
     const missingFields = this.getMissingFields();
 
     if (missingFields.length > 0 && this.state.clarificationCount < MAX_CLARIFICATIONS) {
@@ -132,18 +132,23 @@ export class PlanningAgent {
       };
     }
 
-    // We have enough info, generate the itinerary
-    return this.generateItinerary();
+    // Show confirmation before generating
+    return this.showConfirmation();
   }
 
   /**
-   * Process an answer to a clarifying question
+   * Process an answer to a clarifying question or confirmation
    */
   async processAnswer(
     transcript: string,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _context: ConversationContext
   ): Promise<AgentResponse> {
+    // Check if awaiting confirmation
+    if (this.state.awaitingConfirmation) {
+      return this.handleConfirmationResponse(transcript);
+    }
+
     // Find which question we're answering
     const lastQuestion = this.state.questionsAsked[this.state.questionsAsked.length - 1];
     const questionConfig = CLARIFYING_QUESTIONS.find(
@@ -172,8 +177,93 @@ export class PlanningAgent {
       };
     }
 
-    // Generate the itinerary
-    return this.generateItinerary();
+    // Show confirmation before generating
+    return this.showConfirmation();
+  }
+
+  /**
+   * Show confirmation of understood constraints
+   */
+  private showConfirmation(): AgentResponse {
+    const prefs = this.state.preferences;
+    this.state.awaitingConfirmation = true;
+
+    // Build confirmation message
+    const constraints: string[] = [];
+
+    constraints.push(`${prefs.numDays || 2} days in Ooty`);
+    constraints.push(`${prefs.pace || "moderate"} pace`);
+
+    if (prefs.interests && prefs.interests.length > 0) {
+      constraints.push(`interests in ${prefs.interests.join(", ")}`);
+    }
+
+    if (prefs.travelParty) {
+      constraints.push(`traveling ${prefs.travelParty === "solo" ? "solo" : `as a ${prefs.travelParty}`}`);
+    }
+
+    if (prefs.dietaryPreference && prefs.dietaryPreference !== "any") {
+      constraints.push(`${prefs.dietaryPreference} food preference`);
+    }
+
+    if (prefs.specialRequests) {
+      constraints.push(`special request: ${prefs.specialRequests.slice(0, 50)}...`);
+    }
+
+    // Get seasonal info
+    const seasonInfo = getSeasonInfo(prefs.startDate || new Date());
+
+    const message = `Let me confirm your trip details: ${constraints.join(", ")}. ` +
+      `The weather in Ooty is typically ${seasonInfo.typicalWeather.condition} this time of year. ` +
+      `Should I create your itinerary based on these preferences? Say yes to proceed or tell me what to change.`;
+
+    return {
+      success: true,
+      message,
+      data: { needsClarification: true, awaitingConfirmation: true, preferences: prefs },
+      shouldSpeak: true,
+    };
+  }
+
+  /**
+   * Handle confirmation response
+   */
+  private async handleConfirmationResponse(transcript: string): Promise<AgentResponse> {
+    const text = transcript.toLowerCase();
+
+    // Check for positive confirmation
+    if (/yes|yeah|sure|ok|okay|proceed|go ahead|sounds good|perfect|correct|right/i.test(text)) {
+      this.state.awaitingConfirmation = false;
+      return this.generateItinerary();
+    }
+
+    // Check for negative/change request
+    if (/no|change|modify|different|wrong|actually|wait/i.test(text)) {
+      this.state.awaitingConfirmation = false;
+
+      // Try to extract what they want to change
+      for (const q of CLARIFYING_QUESTIONS) {
+        const extracted = q.extract(text);
+        if (extracted !== null) {
+          (this.state.preferences as Record<string, unknown>)[q.key] = extracted;
+        }
+      }
+
+      return {
+        success: true,
+        message: "No problem! What would you like to change? You can tell me about the number of days, pace, interests, or any other preferences.",
+        data: { needsClarification: true },
+        shouldSpeak: true,
+      };
+    }
+
+    // Unclear response - ask again
+    return {
+      success: true,
+      message: "I didn't catch that. Should I proceed with creating your itinerary, or would you like to change something?",
+      data: { needsClarification: true, awaitingConfirmation: true },
+      shouldSpeak: true,
+    };
   }
 
   /**
@@ -205,8 +295,24 @@ export class PlanningAgent {
       }
     }
 
-    // Extract dates if mentioned
-    // For now, use current date as start date
+    // Extract pace from text
+    if (!this.state.preferences.pace) {
+      if (/relax|easy|slow|leisurely/i.test(text)) this.state.preferences.pace = "relaxed";
+      else if (/pack|busy|full|lots/i.test(text)) this.state.preferences.pace = "packed";
+      else if (/moderate|normal|balanced/i.test(text)) this.state.preferences.pace = "moderate";
+    }
+
+    // Extract interests from text
+    if (!this.state.preferences.interests || this.state.preferences.interests.length === 0) {
+      const interests: string[] = [];
+      if (/nature|scenic|view|garden/i.test(text)) interests.push("nature");
+      if (/food|tea|eat|chocolate/i.test(text)) interests.push("food");
+      if (/culture|heritage|history|museum/i.test(text)) interests.push("culture");
+      if (/adventure|trek|hike/i.test(text)) interests.push("adventure");
+      if (interests.length > 0) this.state.preferences.interests = interests;
+    }
+
+    // Extract dates if mentioned - use current date as start date
     if (!this.state.preferences.startDate) {
       this.state.preferences.startDate = new Date();
     }
@@ -230,14 +336,30 @@ export class PlanningAgent {
   }
 
   /**
-   * Get the next clarifying question
+   * Get the next clarifying question (prioritize required fields)
    */
   private getNextQuestion(missingFields: string[]): string {
+    // First ask required questions
     for (const field of missingFields) {
-      const questionConfig = CLARIFYING_QUESTIONS.find((q) => q.key === field);
+      const questionConfig = CLARIFYING_QUESTIONS.find(
+        (q) => q.key === field && q.priority === 1
+      );
       if (questionConfig && !this.state.questionsAsked.includes(questionConfig.question)) {
         this.state.questionsAsked.push(questionConfig.question);
         return questionConfig.question;
+      }
+    }
+
+    // Then ask optional questions if we have room
+    if (this.state.clarificationCount < MAX_CLARIFICATIONS - 1) {
+      for (const q of CLARIFYING_QUESTIONS.filter(q => q.priority > 1)) {
+        if (!this.state.questionsAsked.includes(q.question)) {
+          const value = (this.state.preferences as Record<string, unknown>)[q.key];
+          if (value === undefined || value === null) {
+            this.state.questionsAsked.push(q.question);
+            return q.question;
+          }
+        }
       }
     }
 
@@ -295,8 +417,8 @@ export class PlanningAgent {
         })),
       };
 
-      // Generate response message
-      const message = this.generateItineraryMessage(itinerary, itineraryResult);
+      // Generate response message with grounded explanations
+      const message = this.generateItineraryMessage(itinerary, itineraryResult, poiResult.reasoning);
 
       return {
         success: true,
@@ -340,20 +462,32 @@ export class PlanningAgent {
   }
 
   /**
-   * Generate a human-readable message for the itinerary
+   * Generate a human-readable message with grounded explanations
    */
   private generateItineraryMessage(
     itinerary: Itinerary,
-    result: { warnings: string[]; unscheduled: unknown[] }
+    result: { warnings: string[]; unscheduled: unknown[] },
+    reasoning?: string
   ): string {
     const { days, preferences } = itinerary;
     const totalPOIs = days.reduce((sum, day) => sum + day.blocks.length, 0);
 
-    let message = `I've created a ${preferences.numDays}-day itinerary for you with ${totalPOIs} activities. `;
+    let message = `I've created a ${preferences.numDays}-day ${preferences.pace} itinerary with ${totalPOIs} activities. `;
 
-    // Add highlights
+    // Add grounded explanation
+    if (reasoning) {
+      message += reasoning + " ";
+    }
+
+    // Add highlights with reasons
     if (days.length > 0 && days[0].blocks.length > 0) {
-      message += `Day 1 starts with ${days[0].blocks[0].poi.name}. `;
+      const firstPOI = days[0].blocks[0];
+      message += `Day 1 starts with ${firstPOI.poi.name}`;
+      if (firstPOI.notes) {
+        message += ` - ${firstPOI.notes.split(".")[0]}.`;
+      } else {
+        message += ". ";
+      }
     }
 
     // Add warnings if any
@@ -361,7 +495,7 @@ export class PlanningAgent {
       message += `Note: ${result.warnings[0]} `;
     }
 
-    message += "Take a look at the itinerary and let me know if you'd like any changes.";
+    message += "You can ask me to modify anything - add places, remove activities, or shuffle the order.";
 
     return message;
   }
@@ -374,7 +508,15 @@ export class PlanningAgent {
       preferences: { city: "ooty" },
       questionsAsked: [],
       clarificationCount: 0,
+      awaitingConfirmation: false,
     };
+  }
+
+  /**
+   * Check if awaiting confirmation
+   */
+  isAwaitingConfirmation(): boolean {
+    return this.state.awaitingConfirmation;
   }
 }
 

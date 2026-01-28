@@ -1,7 +1,7 @@
 import { create } from "zustand";
 
 export type LogLevel = "info" | "success" | "warning" | "error";
-export type LogCategory = "api" | "voice" | "llm" | "n8n" | "system" | "user";
+export type LogCategory = "api" | "voice" | "llm" | "n8n" | "system" | "user" | "eval";
 
 export interface DebugLogEntry {
   id: string;

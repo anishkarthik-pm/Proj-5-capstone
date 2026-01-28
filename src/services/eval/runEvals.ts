@@ -2,6 +2,30 @@ import type { Itinerary, EvalResult } from "@/types";
 import { evaluateFeasibility } from "./feasibilityEval";
 import { evaluateEditCorrectness } from "./editCorrectnessEval";
 import { evaluateGrounding } from "./groundingEval";
+import { useDebugStore } from "@/lib/stores/debugStore";
+
+// Helper to log evaluation results to debug panel
+function logEvalResult(result: EvalResult, description?: string) {
+  const { log } = useDebugStore.getState();
+  const level = result.passed ? "success" : result.score >= 50 ? "warning" : "error";
+
+  log({
+    level,
+    category: "eval",
+    message: `${result.evalType.toUpperCase()}: ${result.passed ? "PASSED" : "FAILED"} (${result.score}/100)${description ? ` - ${description}` : ""}`,
+    details: {
+      evalType: result.evalType,
+      passed: result.passed,
+      score: result.score,
+      issueCount: result.issues.length,
+      issues: result.issues.map(i => ({
+        severity: i.severity,
+        issue: i.issue,
+        day: i.day,
+      })),
+    },
+  });
+}
 
 /**
  * Run all evaluations on an itinerary
@@ -9,23 +33,32 @@ import { evaluateGrounding } from "./groundingEval";
 export async function runAllEvaluations(
   itinerary: Itinerary
 ): Promise<EvalResult[]> {
+  const { logInfo } = useDebugStore.getState();
   const results: EvalResult[] = [];
 
+  logInfo("eval", "Starting itinerary evaluations...");
+
   // Run feasibility evaluation
-  console.log("Running feasibility evaluation...");
   const feasibilityResult = evaluateFeasibility(itinerary);
   results.push(feasibilityResult);
-  console.log(
-    `Feasibility: ${feasibilityResult.passed ? "PASSED" : "FAILED"} (${feasibilityResult.score}/100)`
-  );
+  logEvalResult(feasibilityResult, "Schedule timing and travel feasibility");
 
   // Run grounding evaluation
-  console.log("Running grounding evaluation...");
   const groundingResult = evaluateGrounding(itinerary);
   results.push(groundingResult);
-  console.log(
-    `Grounding: ${groundingResult.passed ? "PASSED" : "FAILED"} (${groundingResult.score}/100)`
-  );
+  logEvalResult(groundingResult, "Data source verification");
+
+  // Log summary
+  const allPassed = results.every(r => r.passed);
+  const avgScore = Math.round(results.reduce((sum, r) => sum + r.score, 0) / results.length);
+
+  const { log } = useDebugStore.getState();
+  log({
+    level: allPassed ? "success" : "warning",
+    category: "eval",
+    message: `Evaluation complete: ${allPassed ? "All checks passed" : "Some issues found"} (Avg: ${avgScore}/100)`,
+    details: { totalEvals: results.length, allPassed, avgScore },
+  });
 
   return results;
 }
@@ -43,31 +76,40 @@ export async function runEditEvaluation(
     description: string;
   }
 ): Promise<EvalResult[]> {
+  const { logInfo } = useDebugStore.getState();
   const results: EvalResult[] = [];
 
+  logInfo("eval", `Evaluating edit: ${editDescription.description}`, {
+    editType: editDescription.type,
+    dayNumber: editDescription.dayNumber,
+  });
+
   // Run edit correctness evaluation
-  console.log("Running edit correctness evaluation...");
   const editResult = evaluateEditCorrectness(before, after, editDescription);
   results.push(editResult);
-  console.log(
-    `Edit Correctness: ${editResult.passed ? "PASSED" : "FAILED"} (${editResult.score}/100)`
-  );
+  logEvalResult(editResult, `Edit: ${editDescription.type}`);
 
   // Also run feasibility on the new itinerary
-  console.log("Running feasibility evaluation on updated itinerary...");
   const feasibilityResult = evaluateFeasibility(after);
   results.push(feasibilityResult);
-  console.log(
-    `Feasibility: ${feasibilityResult.passed ? "PASSED" : "FAILED"} (${feasibilityResult.score}/100)`
-  );
+  logEvalResult(feasibilityResult, "Post-edit feasibility");
 
   // Run grounding evaluation
-  console.log("Running grounding evaluation...");
   const groundingResult = evaluateGrounding(after);
   results.push(groundingResult);
-  console.log(
-    `Grounding: ${groundingResult.passed ? "PASSED" : "FAILED"} (${groundingResult.score}/100)`
-  );
+  logEvalResult(groundingResult, "Post-edit grounding");
+
+  // Log summary
+  const allPassed = results.every(r => r.passed);
+  const avgScore = Math.round(results.reduce((sum, r) => sum + r.score, 0) / results.length);
+
+  const { log } = useDebugStore.getState();
+  log({
+    level: allPassed ? "success" : "warning",
+    category: "eval",
+    message: `Edit evaluation complete: ${allPassed ? "Edit validated" : "Issues detected"} (Avg: ${avgScore}/100)`,
+    details: { editType: editDescription.type, totalEvals: results.length, allPassed, avgScore },
+  });
 
   return results;
 }
