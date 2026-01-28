@@ -1,0 +1,158 @@
+{
+  "name": "Ooty Trip Planner - PDF Email",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ooty-itinerary",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "ooty-itinerary"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract data from webhook\nconst { itinerary, name, email, generatedAt } = $input.first().json;\n\n// Generate HTML for PDF\nconst html = `\n<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UTF-8\">\n  <style>\n    * { margin: 0; padding: 0; box-sizing: border-box; }\n    body { \n      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; \n      max-width: 800px; \n      margin: 0 auto; \n      padding: 40px 20px; \n      color: #1f2937; \n      line-height: 1.6;\n    }\n    .header { \n      text-align: center; \n      margin-bottom: 30px; \n      padding-bottom: 20px;\n      border-bottom: 3px solid #2563eb;\n    }\n    h1 { \n      color: #2563eb; \n      font-size: 28px;\n      margin-bottom: 10px;\n    }\n    .meta { color: #6b7280; font-size: 14px; }\n    .summary { \n      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); \n      padding: 20px; \n      border-radius: 12px; \n      margin: 25px 0;\n      border-left: 4px solid #2563eb;\n    }\n    .day { \n      margin: 30px 0; \n      page-break-inside: avoid;\n    }\n    .day-header { \n      background: #2563eb;\n      color: white;\n      padding: 12px 20px; \n      border-radius: 8px 8px 0 0;\n      font-size: 18px; \n      font-weight: 600;\n    }\n    .day-content {\n      border: 1px solid #e5e7eb;\n      border-top: none;\n      border-radius: 0 0 8px 8px;\n      padding: 15px;\n    }\n    .activity { \n      margin: 15px 0; \n      padding: 15px; \n      background: #fafafa; \n      border-radius: 8px;\n      border-left: 3px solid #10b981;\n    }\n    .activity-time { \n      font-weight: 700; \n      color: #2563eb; \n      font-size: 14px;\n      margin-bottom: 5px;\n    }\n    .activity-name { \n      font-size: 17px; \n      font-weight: 600; \n      color: #1f2937;\n      margin-bottom: 8px;\n    }\n    .activity-desc { \n      color: #4b5563; \n      font-size: 14px; \n      margin-bottom: 8px;\n    }\n    .activity-meta {\n      display: flex;\n      gap: 15px;\n      font-size: 13px;\n      color: #6b7280;\n    }\n    .tip { \n      background: #fef3c7; \n      padding: 10px 15px; \n      border-radius: 6px; \n      font-size: 13px; \n      margin-top: 10px;\n      border-left: 3px solid #f59e0b;\n    }\n    .travel { \n      text-align: center; \n      padding: 10px; \n      color: #6b7280;\n      font-size: 13px;\n    }\n    .travel-icon { font-size: 16px; }\n    .footer { \n      margin-top: 40px; \n      padding-top: 20px; \n      border-top: 2px solid #e5e7eb; \n      color: #6b7280; \n      font-size: 12px;\n      text-align: center;\n    }\n    .sources { \n      background: #f9fafb; \n      padding: 15px; \n      border-radius: 8px; \n      margin-top: 15px;\n    }\n    .sources-title { font-weight: 600; margin-bottom: 8px; }\n  </style>\n</head>\n<body>\n  <div class=\"header\">\n    <h1>${itinerary.title}</h1>\n    <p class=\"meta\">Prepared for <strong>${name}</strong></p>\n    <p class=\"meta\">${itinerary.tripDates}</p>\n  </div>\n  \n  <div class=\"summary\">\n    <strong>Trip Overview:</strong> ${itinerary.summary}\n  </div>\n\n  ${itinerary.days.map(day => `\n    <div class=\"day\">\n      <div class=\"day-header\">Day ${day.dayNumber} - ${day.date}</div>\n      <div class=\"day-content\">\n        ${day.activities.map((activity, idx) => `\n          ${activity.travelTime ? `<div class=\"travel\"><span class=\"travel-icon\">🚗</span> ${activity.travelTime}</div>` : ''}\n          <div class=\"activity\">\n            <div class=\"activity-time\">${activity.time}</div>\n            <div class=\"activity-name\">${activity.name}</div>\n            <div class=\"activity-desc\">${activity.description}</div>\n            <div class=\"activity-meta\">\n              <span>⏱️ ${activity.duration}</span>\n            </div>\n            ${activity.tips && activity.tips.length > 0 ? `<div class=\"tip\">💡 <strong>Tip:</strong> ${activity.tips[0]}</div>` : ''}\n          </div>\n        `).join('')}\n      </div>\n    </div>\n  `).join('')}\n\n  <div class=\"footer\">\n    <div class=\"sources\">\n      <div class=\"sources-title\">📚 Sources</div>\n      ${itinerary.sources.join(' • ')}\n    </div>\n    <p style=\"margin-top: 15px;\">Generated on ${new Date(generatedAt).toLocaleString('en-IN', { dateStyle: 'full', timeStyle: 'short' })}</p>\n    <p style=\"margin-top: 5px;\">Created with ❤️ by Ooty Trip Planner</p>\n  </div>\n</body>\n</html>\n`;\n\nreturn {\n  html,\n  email,\n  name,\n  subject: `Your ${itinerary.title} is Ready!`,\n  tripDates: itinerary.tripDates\n};"
+      },
+      "id": "generate-html",
+      "name": "Generate HTML",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "operation": "convert",
+        "sourceProperty": "html",
+        "destinationKey": "pdfBuffer",
+        "options": {
+          "format": "A4",
+          "margin": {
+            "top": "20mm",
+            "right": "15mm",
+            "bottom": "20mm",
+            "left": "15mm"
+          }
+        }
+      },
+      "id": "html-to-pdf",
+      "name": "HTML to PDF",
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.1,
+      "position": [690, 300]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "html",
+        "html": "=<div style=\"font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;\">\n  <div style=\"text-align: center; padding: 20px; background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); border-radius: 12px 12px 0 0;\">\n    <h1 style=\"color: white; margin: 0; font-size: 24px;\">🏔️ Your Ooty Itinerary</h1>\n  </div>\n  \n  <div style=\"background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;\">\n    <p style=\"font-size: 16px; color: #1f2937;\">Hi <strong>{{ $json.name }}</strong>,</p>\n    \n    <p style=\"color: #4b5563; line-height: 1.6;\">Your personalized Ooty trip itinerary is ready! 🎉</p>\n    \n    <div style=\"background: #eff6ff; padding: 15px; border-radius: 8px; margin: 20px 0;\">\n      <p style=\"margin: 0; color: #1e40af;\"><strong>📅 Trip Dates:</strong> {{ $json.tripDates }}</p>\n    </div>\n    \n    <p style=\"color: #4b5563;\">We've attached a beautifully formatted PDF with all your trip details, including:</p>\n    \n    <ul style=\"color: #4b5563; line-height: 1.8;\">\n      <li>Day-by-day activities with timings</li>\n      <li>Travel times between locations</li>\n      <li>Helpful tips for each destination</li>\n      <li>Curated recommendations based on your preferences</li>\n    </ul>\n    \n    <p style=\"color: #4b5563; margin-top: 20px;\">Have a wonderful trip to the Queen of Hill Stations! 🌿</p>\n    \n    <div style=\"margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; color: #9ca3af; font-size: 12px;\">\n      <p>This email was sent by Ooty Trip Planner</p>\n    </div>\n  </div>\n</div>",
+        "options": {
+          "attachments": "pdfBuffer",
+          "attachmentsUi": {
+            "attachmentsBinary": [
+              {
+                "property": "pdfBuffer"
+              }
+            ]
+          }
+        }
+      },
+      "id": "send-email",
+      "name": "Send Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [910, 300],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_GMAIL_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, message: `Itinerary sent to ${$json.email}` }) }}",
+        "options": {}
+      },
+      "id": "respond-success",
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1130, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, message: 'Failed to send email', error: $json.error || 'Unknown error' }) }}",
+        "options": {
+          "responseCode": 500
+        }
+      },
+      "id": "respond-error",
+      "name": "Respond Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1130, 500]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Generate HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate HTML": {
+      "main": [
+        [
+          {
+            "node": "HTML to PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML to PDF": {
+      "main": [
+        [
+          {
+            "node": "Send Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "pinData": {}
+}
