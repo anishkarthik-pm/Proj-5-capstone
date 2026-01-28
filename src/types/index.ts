@@ -397,10 +397,13 @@ export interface AgentResponse {
 // Configuration Types
 // ============================================
 
+export type LLMProvider = "openai" | "anthropic" | "gemini";
+
 export interface AppConfig {
   llm: {
-    provider: "openai" | "anthropic";
+    provider: LLMProvider;
     model: string;
+    apiKey?: string;
   };
   voice: {
     silenceTimeout: number;
