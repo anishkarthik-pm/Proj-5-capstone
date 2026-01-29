@@ -4,8 +4,11 @@ import type {
   TimeBlock,
   ItineraryBuilderInput,
   ItineraryBuilderOutput,
+  DayWeather,
 } from "@/types";
 import poiData from "@/data/ooty-pois.json";
+import { getSeasonInfo } from "./weatherAdjustment";
+import { estimateDistanceKm, VEHICLE_RATES, type VehicleType } from "./travelCostCalculator";
 
 /**
  * MCP Tool: Itinerary Builder
@@ -96,11 +99,14 @@ const PACE_BUDGETS = {
 };
 
 /**
- * Extended input with POI reasons and dietary preference
+ * Extended input with POI reasons, dietary preference, and vehicle options
  */
 export interface ItineraryBuilderInputWithReasons extends ItineraryBuilderInput {
   poiReasons?: Map<string, string>;
   dietaryPreference?: "veg" | "non-veg" | "any";
+  startDate?: Date;
+  groupSize?: number;
+  vehicleType?: VehicleType;
 }
 
 /**
@@ -118,10 +124,21 @@ export async function buildItinerary(
     travelTimeMatrix,
     poiReasons,
     dietaryPreference = "any",
+    startDate = new Date(),
+    groupSize = 2,
+    vehicleType,
   } = input;
 
   const budget = PACE_BUDGETS[pace];
   const warnings: string[] = [];
+
+  // Determine vehicle type based on group size if not provided
+  const selectedVehicle: VehicleType = vehicleType ||
+    (groupSize <= 2 ? "hatchback" : groupSize <= 4 ? "sedan" : groupSize <= 7 ? "suv" : "tempo");
+  const vehicleRate = VEHICLE_RATES[selectedVehicle];
+
+  // Get weather info for the trip dates
+  const seasonInfo = getSeasonInfo(startDate);
 
   // Get food spots based on dietary preference
   const foodSpots = getFoodSpots(dietaryPreference);
@@ -220,6 +237,17 @@ export async function buildItinerary(
       (sum, b) => sum + b.travelTimeFromPrev,
       0
     );
+
+    // Calculate travel distance and cost for the day
+    const dayDistanceKm = estimateDistanceKm(dayPlan.totalTravelTime);
+    dayPlan.totalDistanceKm = dayDistanceKm;
+    dayPlan.travelCostInr = Math.round(dayDistanceKm * vehicleRate.perKmRate);
+
+    // Add weather info for this day
+    const dayDate = new Date(startDate.getTime() + (dayNum - 1) * 24 * 60 * 60 * 1000);
+    dayPlan.date = dayDate;
+    dayPlan.weather = getWeatherForDay(dayDate, seasonInfo);
+    dayPlan.weatherNote = dayPlan.weather.tip;
 
     // Check for warnings
     if (dayPlan.blocks.length >= budget.maxActivitiesPerDay + 2) {
@@ -722,6 +750,51 @@ export function validateItinerary(
   return {
     isValid: issues.length === 0,
     issues,
+  };
+}
+
+/**
+ * Get weather info for a specific day based on season
+ */
+function getWeatherForDay(
+  date: Date,
+  seasonInfo: ReturnType<typeof getSeasonInfo>
+): DayWeather {
+  const baseWeather = seasonInfo.typicalWeather;
+
+  // Add slight variation for each day
+  const dayOfMonth = date.getDate();
+  const tempVariation = (dayOfMonth % 5) - 2; // -2 to +2 degrees
+
+  // Determine condition based on season and day (map to DayWeather format)
+  const condition = baseWeather.condition;
+  const tips: string[] = [];
+
+  // Add weather-specific tips based on condition
+  if (condition === "foggy") {
+    tips.push("Start late for viewpoints - mist usually clears by 10 AM");
+    tips.push("Carry a light jacket as mornings can be chilly");
+  } else if (condition === "rainy" || condition === "stormy") {
+    tips.push("Carry an umbrella and waterproof gear");
+    tips.push("Indoor attractions like museums and chocolate shops are ideal today");
+  } else if (condition === "sunny") {
+    tips.push("Great day for scenic viewpoints and gardens");
+    tips.push("Carry sunscreen and sunglasses");
+  } else {
+    tips.push("Pleasant weather for outdoor activities");
+  }
+
+  // Temperature is a single number in WeatherCondition, convert to min/max range
+  const baseTemp = baseWeather.temperature;
+
+  return {
+    temperature: {
+      min: baseTemp - 3 + tempVariation, // Approximate min as 3 degrees lower
+      max: baseTemp + 2 + tempVariation, // Approximate max as 2 degrees higher
+    },
+    condition: condition === "stormy" ? "rainy" : condition, // Map stormy to rainy for display
+    humidity: baseWeather.humidity,
+    tip: tips[0],
   };
 }
 

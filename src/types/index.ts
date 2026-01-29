@@ -44,6 +44,8 @@ export interface TripPreferences {
   budget: "budget" | "moderate" | "luxury";
   mobility: "full" | "limited";
   travelParty: "solo" | "couple" | "family" | "group";
+  groupSize?: number; // Number of people for vehicle selection
+  vehicleType?: "hatchback" | "sedan" | "suv" | "tempo"; // For cost calculation
   dietaryPreference?: "veg" | "non-veg" | "any"; // Food preference
   specialRequests?: string;
 }
@@ -67,13 +69,23 @@ export interface TimeBlock {
 // Day Plan
 // ============================================
 
+export interface DayWeather {
+  temperature: { min: number; max: number };
+  condition: string; // "sunny" | "cloudy" | "rainy" | "misty"
+  humidity?: number;
+  tip?: string;
+}
+
 export interface DayPlan {
   dayNumber: number;
   date: Date;
   blocks: TimeBlock[];
   totalDuration: number; // total activity time in mins
   totalTravelTime: number; // total travel time in mins
+  totalDistanceKm?: number; // total travel distance
+  travelCostInr?: number; // estimated vehicle cost
   weatherNote?: string;
+  weather?: DayWeather; // Weather forecast for the day
   theme?: string; // e.g., "Nature Day", "Cultural Exploration"
 }
 

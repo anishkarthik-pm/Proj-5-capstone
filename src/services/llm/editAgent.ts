@@ -9,6 +9,11 @@ import type {
 } from "@/types";
 import { searchPOIs } from "@/services/mcp/poiSearch";
 import travelTimesData from "@/data/ooty-travel-times.json";
+import {
+  generateEditResponse,
+  generateSuggestionResponse,
+  generatePOIReasoning,
+} from "./conversationLLM";
 
 interface EditOperation {
   type: "add" | "remove" | "swap" | "replace" | "move" | "adjust_pace" | "swap_days" | "suggest";
@@ -429,9 +434,22 @@ export class EditAgent {
             updatedItinerary.lastModified = new Date();
             updatedItinerary.version++;
 
+            // Use LLM for natural response
+            let message: string;
+            try {
+              message = await generateEditResponse({
+                action: "removed an activity",
+                changedItems: [removed.poi.name],
+                itinerary: updatedItinerary,
+                userRequest: `remove ${removed.poi.name}`,
+              });
+            } catch {
+              message = `I've removed ${removed.poi.name} from Day ${operation.dayNumber}. The schedule has been adjusted.`;
+            }
+
             return {
               success: true,
-              message: `I've removed ${removed.poi.name} from Day ${operation.dayNumber}. The schedule has been adjusted.`,
+              message,
               data: {
                 itinerary: updatedItinerary,
                 changedBlocks: [operation.blockId],
@@ -444,11 +462,25 @@ export class EditAgent {
 
       case "add":
         if (operation.newPOI) {
+          // Generate LLM-powered reasoning for this POI
+          let poiReasoning = operation.newPOI.tips?.[0] || "";
+          try {
+            poiReasoning = await generatePOIReasoning({
+              poi: operation.newPOI,
+              userInterests: updatedItinerary.preferences.interests || ["nature"],
+              timeSlot: operation.timeSlot || "afternoon",
+              dayTheme: day.theme,
+            });
+          } catch {
+            // Use fallback
+          }
+
           const newBlock = this.createTimeBlock(
             operation.newPOI,
             operation.timeSlot || "afternoon",
             day.blocks
           );
+          newBlock.reasoning = poiReasoning;
           day.blocks.push(newBlock);
           // Sort blocks by time slot
           day.blocks.sort((a, b) => {
@@ -459,9 +491,23 @@ export class EditAgent {
           updatedItinerary.lastModified = new Date();
           updatedItinerary.version++;
 
+          // Use LLM for natural response
+          let message: string;
+          try {
+            message = await generateEditResponse({
+              action: "added a new activity",
+              changedItems: [operation.newPOI.name],
+              itinerary: updatedItinerary,
+              userRequest: `add ${operation.newPOI.name}`,
+            });
+            message += ` ${poiReasoning}`;
+          } catch {
+            message = `I've added ${operation.newPOI.name} to Day ${operation.dayNumber}. ${poiReasoning}`;
+          }
+
           return {
             success: true,
-            message: `I've added ${operation.newPOI.name} to Day ${operation.dayNumber}. ${operation.newPOI.tips?.[0] || ""}`,
+            message,
             data: {
               itinerary: updatedItinerary,
               changedBlocks: [newBlock.id],
@@ -478,15 +524,44 @@ export class EditAgent {
           );
           if (blockIndex !== -1) {
             const oldPOI = day.blocks[blockIndex].poi;
+
+            // Generate LLM-powered reasoning for the new POI
+            let poiReasoning = operation.newPOI.tips?.[0] || "";
+            try {
+              poiReasoning = await generatePOIReasoning({
+                poi: operation.newPOI,
+                userInterests: updatedItinerary.preferences.interests || ["nature"],
+                timeSlot: day.blocks[blockIndex].timeSlot,
+                dayTheme: day.theme,
+              });
+            } catch {
+              // Use fallback
+            }
+
             day.blocks[blockIndex].poi = operation.newPOI;
+            day.blocks[blockIndex].reasoning = poiReasoning;
             day.blocks[blockIndex].notes = `Replaced ${oldPOI.name}`;
             this.recalculateTimes(day);
             updatedItinerary.lastModified = new Date();
             updatedItinerary.version++;
 
+            // Use LLM for natural response
+            let message: string;
+            try {
+              message = await generateEditResponse({
+                action: "replaced an activity",
+                changedItems: [oldPOI.name, operation.newPOI.name],
+                itinerary: updatedItinerary,
+                userRequest: `replace ${oldPOI.name} with something else`,
+              });
+              message += ` ${poiReasoning}`;
+            } catch {
+              message = `I've replaced ${oldPOI.name} with ${operation.newPOI.name}. ${poiReasoning}`;
+            }
+
             return {
               success: true,
-              message: `I've replaced ${oldPOI.name} with ${operation.newPOI.name}. ${operation.newPOI.tips?.[0] || ""}`,
+              message,
               data: {
                 itinerary: updatedItinerary,
                 changedBlocks: [operation.blockId],
@@ -648,26 +723,57 @@ export class EditAgent {
           interests: updatedItinerary.preferences.interests || ["nature"],
           pace: updatedItinerary.preferences.pace,
           excludeIds: existingPOIIds,
-          maxResults: 3,
+          maxResults: 5, // Get more suggestions for LLM to choose from
         });
 
         if (suggestResult.pois && suggestResult.pois.length > 0) {
-          const suggestions = suggestResult.pois
-            .map((poi) => `${poi.name} (${poi.category.join(", ")})`)
-            .join(", ");
-
-          return {
-            success: true,
-            message: `Here are some places you might enjoy that aren't in your itinerary yet: ${suggestions}. Would you like me to add any of these? Just say "add [place name] to Day [number]".`,
-            data: {
+          // Use LLM to generate compelling suggestions with reasons
+          try {
+            const llmResult = await generateSuggestionResponse({
               suggestions: suggestResult.pois,
-            },
-            shouldSpeak: true,
-          };
+              userInterests: updatedItinerary.preferences.interests || ["nature"],
+              currentItinerary: updatedItinerary,
+            });
+
+            // Format as a numbered list for easy selection
+            let message = llmResult.message + "\n\n";
+            for (let i = 0; i < llmResult.formattedSuggestions.length; i++) {
+              const s = llmResult.formattedSuggestions[i];
+              message += `${i + 1}. ${s.name}: ${s.reason}\n`;
+            }
+            message += `\nJust say "add [name] to Day [number]" to include any of these.`;
+
+            return {
+              success: true,
+              message,
+              data: {
+                suggestions: suggestResult.pois.slice(0, llmResult.formattedSuggestions.length),
+                formattedSuggestions: llmResult.formattedSuggestions,
+                isSelectableList: true, // Flag for UI to show as selectable
+              },
+              shouldSpeak: true,
+            };
+          } catch {
+            // Fallback
+            const suggestions = suggestResult.pois
+              .slice(0, 3)
+              .map((poi, i) => `${i + 1}. ${poi.name} - ${poi.description.slice(0, 60)}...`)
+              .join("\n");
+
+            return {
+              success: true,
+              message: `Here are some places you might enjoy:\n\n${suggestions}\n\nSay "add [place name] to Day [number]" to include any.`,
+              data: {
+                suggestions: suggestResult.pois.slice(0, 3),
+                isSelectableList: true,
+              },
+              shouldSpeak: true,
+            };
+          }
         } else {
           return {
             success: true,
-            message: "I've already included most of the great spots in Ooty! Your itinerary is quite comprehensive. Would you like to replace any existing activity instead?",
+            message: "Your itinerary already covers the best spots in Ooty! Would you like to replace any existing activity instead?",
             shouldSpeak: true,
           };
         }

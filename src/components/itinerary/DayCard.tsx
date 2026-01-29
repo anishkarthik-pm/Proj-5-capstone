@@ -1,11 +1,29 @@
 "use client";
 
 import React from "react";
-import { Calendar, Clock, Car } from "lucide-react";
+import { Calendar, Clock, Car, Cloud, Sun, CloudRain, CloudFog, Thermometer, IndianRupee, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { DayPlan } from "@/types";
 import { TimeBlockCard } from "./TimeBlockCard";
 import { TravelSegment } from "./TravelSegment";
+
+// Weather icon based on condition
+function WeatherIcon({ condition }: { condition?: string }) {
+  switch (condition?.toLowerCase()) {
+    case "sunny":
+    case "clear":
+      return <Sun className="w-4 h-4 text-yellow-500" />;
+    case "rainy":
+    case "rain":
+      return <CloudRain className="w-4 h-4 text-blue-500" />;
+    case "misty":
+    case "foggy":
+    case "mist":
+      return <CloudFog className="w-4 h-4 text-gray-400" />;
+    default:
+      return <Cloud className="w-4 h-4 text-gray-400" />;
+  }
+}
 
 interface DayCardProps {
   day: DayPlan;
@@ -58,20 +76,51 @@ export function DayCard({ day, className }: DayCardProps) {
             <Car className="w-4 h-4" />
             <span>{formatDuration(day.totalTravelTime)}</span>
           </div>
+          {day.totalDistanceKm && (
+            <div className="flex items-center gap-1">
+              <MapPin className="w-4 h-4" />
+              <span>{day.totalDistanceKm} km</span>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Theme Badge */}
-      {day.theme && (
-        <div className="inline-flex items-center px-3 py-1 bg-primary/10 text-primary rounded-full text-sm font-medium">
-          {day.theme}
-        </div>
-      )}
+      {/* Weather & Theme Row */}
+      <div className="flex flex-wrap items-center gap-2">
+        {/* Theme Badge */}
+        {day.theme && (
+          <div className="inline-flex items-center px-3 py-1 bg-primary/10 text-primary rounded-full text-sm font-medium">
+            {day.theme}
+          </div>
+        )}
 
-      {/* Weather Note */}
-      {day.weatherNote && (
+        {/* Weather Badge */}
+        {day.weather && (
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-sky-50 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-900 rounded-full text-sm">
+            <WeatherIcon condition={day.weather.condition} />
+            <span className="text-sky-800 dark:text-sky-200">
+              {day.weather.temperature.min}°-{day.weather.temperature.max}°C
+            </span>
+            <span className="text-sky-600 dark:text-sky-300 capitalize">
+              {day.weather.condition}
+            </span>
+          </div>
+        )}
+
+        {/* Travel Cost Badge */}
+        {day.travelCostInr && day.travelCostInr > 0 && (
+          <div className="inline-flex items-center gap-1 px-3 py-1 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900 rounded-full text-sm text-green-800 dark:text-green-200">
+            <IndianRupee className="w-3 h-3" />
+            <span>₹{day.travelCostInr} travel</span>
+          </div>
+        )}
+      </div>
+
+      {/* Weather Note/Tip */}
+      {(day.weatherNote || day.weather?.tip) && (
         <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-lg text-sm text-amber-800 dark:text-amber-200">
-          {day.weatherNote}
+          <Thermometer className="w-4 h-4 inline mr-2" />
+          {day.weather?.tip || day.weatherNote}
         </div>
       )}
 

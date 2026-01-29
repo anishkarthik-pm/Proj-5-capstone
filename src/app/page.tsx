@@ -8,6 +8,7 @@ import { VoiceOutput } from "@/components/voice/VoiceOutput";
 import { TextInput } from "@/components/voice/TextInput";
 import { ItineraryView } from "@/components/itinerary/ItineraryView";
 import { SourcesPanel } from "@/components/itinerary/SourcesPanel";
+import { SuggestionList, type SuggestionItem } from "@/components/itinerary/SuggestionList";
 import { EmailDialog } from "@/components/email/EmailDialog";
 import { DebugPanel, DebugButton } from "@/components/debug/DebugPanel";
 import { useTripStore } from "@/lib/stores/tripStore";
@@ -15,6 +16,7 @@ import { useVoiceStore } from "@/lib/stores/voiceStore";
 import { useConversationStore } from "@/lib/stores/conversationStore";
 import { useUIStore } from "@/lib/stores/uiStore";
 import { useDebugStore } from "@/lib/stores/debugStore";
+import type { POI } from "@/types";
 // LLM calls go through API routes (not direct imports) for Vercel compatibility
 async function processWithOrchestrator(transcript: string) {
   const response = await fetch("/api/orchestrator", {
@@ -49,6 +51,7 @@ export default function Home() {
   const { isDemoMode } = useUIStore();
   const { logInfo, logSuccess, logError } = useDebugStore();
   const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
+  const [suggestions, setSuggestions] = useState<SuggestionItem[]>([]);
 
   // Initialize RAG on mount
   useEffect(() => {
@@ -109,6 +112,35 @@ export default function Home() {
           });
         }
 
+        // Check for suggestions in the response data
+        const responseData = response.data as {
+          suggestions?: POI[];
+          formattedSuggestions?: Array<{ name: string; reason: string }>;
+          isSelectableList?: boolean;
+        } | undefined;
+
+        if (responseData?.isSelectableList && responseData?.formattedSuggestions) {
+          // Use formatted suggestions from LLM
+          const formattedSuggestions: SuggestionItem[] = responseData.formattedSuggestions.map((s, i) => ({
+            name: s.name,
+            reason: s.reason,
+            poi: responseData.suggestions?.[i],
+          }));
+          setSuggestions(formattedSuggestions);
+          logInfo("system", `Received ${formattedSuggestions.length} suggestions`);
+        } else if (responseData?.suggestions) {
+          // Fallback to raw POI suggestions
+          const poiSuggestions: SuggestionItem[] = responseData.suggestions.map((poi: POI) => ({
+            name: poi.name,
+            reason: poi.description.slice(0, 100) + "...",
+            poi,
+          }));
+          setSuggestions(poiSuggestions);
+        } else {
+          // Clear suggestions if not a suggestion response
+          setSuggestions([]);
+        }
+
         // Set response for TTS
         setCurrentResponse(response.message);
 
@@ -160,12 +192,28 @@ export default function Home() {
     await resetOrchestrator();
     setItinerary(null);
     setCurrentResponse("");
+    setSuggestions([]);
     addMessage({
       role: "assistant",
       content: "Let's plan a new trip! Tell me about your Ooty adventure.",
     });
     speak("Let's plan a new trip! Tell me about your Ooty adventure.");
   }, [setItinerary, setCurrentResponse, addMessage, logInfo]);
+
+  // Handle suggestion selection
+  const handleSuggestionSelect = useCallback(
+    async (suggestion: SuggestionItem, dayNumber?: number) => {
+      const day = dayNumber || 1;
+      const command = `add ${suggestion.name} to Day ${day}`;
+      logInfo("user", `Suggestion selected: ${command}`);
+      setSuggestions([]); // Clear suggestions
+      await handleTranscriptComplete(command);
+    },
+    [handleTranscriptComplete, logInfo]
+  );
+
+  // Get available days for suggestions
+  const availableDays = itinerary?.days.map(d => d.dayNumber) || [1, 2, 3];
 
   return (
     <div className="h-screen flex flex-col bg-background">
@@ -229,22 +277,36 @@ export default function Home() {
 
           {/* Voice Panel (30%) */}
           <div className="w-[30%] flex flex-col bg-muted/20">
-            <div className="flex-1 flex flex-col justify-center p-6">
-              <VoiceInput
-                onTranscriptComplete={handleTranscriptComplete}
-                disabled={isProcessing || isLoading}
-              />
-              {/* Text Input */}
-              <div className="mt-4">
-                <div className="text-xs text-muted-foreground text-center mb-2">
-                  or type your message
-                </div>
-                <TextInput
-                  onSubmit={handleTextSubmit}
+            <div className="flex-1 flex flex-col p-6 overflow-y-auto">
+              <div className="flex-1 flex flex-col justify-center">
+                <VoiceInput
+                  onTranscriptComplete={handleTranscriptComplete}
                   disabled={isProcessing || isLoading}
-                  placeholder="Type here to test..."
                 />
+                {/* Text Input */}
+                <div className="mt-4">
+                  <div className="text-xs text-muted-foreground text-center mb-2">
+                    or type your message
+                  </div>
+                  <TextInput
+                    onSubmit={handleTextSubmit}
+                    disabled={isProcessing || isLoading}
+                    placeholder="Type here to test..."
+                  />
+                </div>
               </div>
+
+              {/* Suggestions List */}
+              {suggestions.length > 0 && (
+                <div className="mt-4">
+                  <SuggestionList
+                    suggestions={suggestions}
+                    onSelect={handleSuggestionSelect}
+                    availableDays={availableDays}
+                    title="Suggested Places"
+                  />
+                </div>
+              )}
             </div>
             <div className="border-t p-4">
               <VoiceOutput autoSpeak={false} />
@@ -258,6 +320,18 @@ export default function Home() {
           <div className="flex-1 overflow-hidden">
             <ItineraryView />
           </div>
+
+          {/* Suggestions (mobile) */}
+          {suggestions.length > 0 && (
+            <div className="flex-shrink-0 border-t p-3 max-h-48 overflow-y-auto bg-muted/10">
+              <SuggestionList
+                suggestions={suggestions}
+                onSelect={handleSuggestionSelect}
+                availableDays={availableDays}
+                title="Suggested Places"
+              />
+            </div>
+          )}
 
           {/* Fixed Voice Panel at Bottom */}
           <div className="flex-shrink-0 border-t bg-background p-4 space-y-3">

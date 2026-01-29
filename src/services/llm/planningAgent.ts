@@ -8,7 +8,13 @@ import type {
 import { searchPOIs } from "@/services/mcp/poiSearch";
 import { buildItinerary } from "@/services/mcp/itineraryBuilder";
 import { getSeasonInfo } from "@/services/mcp/weatherAdjustment";
+import { getRecommendedVehicle, formatCostBreakdown } from "@/services/mcp/travelCostCalculator";
 import travelTimesData from "@/data/ooty-travel-times.json";
+import {
+  generateItineraryResponse,
+  generateClarifyingQuestion,
+  generateConfirmationMessage,
+} from "./conversationLLM";
 
 // Clarifying questions to gather trip preferences (max 6)
 const CLARIFYING_QUESTIONS = [
@@ -55,6 +61,24 @@ const CLARIFYING_QUESTIONS = [
       if (/couple|partner|spouse|romantic|two of us/i.test(text)) return "couple";
       if (/family|kids|children|parents|elderly/i.test(text)) return "family";
       if (/group|friends/i.test(text)) return "group";
+      return null;
+    },
+  },
+  {
+    key: "groupSize",
+    question: "How many people will be traveling? This helps me suggest the right vehicle for getting around.",
+    priority: 2, // Optional but useful for vehicle recommendation
+    extract: (text: string) => {
+      // Look for numbers
+      const match = text.match(/(\d+)\s*(?:people|person|of us|members|travelers)?/i);
+      if (match) return parseInt(match[1], 10);
+      // Handle word forms
+      if (/alone|solo|just me|myself/i.test(text)) return 1;
+      if (/two|couple|2 of us/i.test(text)) return 2;
+      if (/three|3 of us/i.test(text)) return 3;
+      if (/four|4 of us/i.test(text)) return 4;
+      if (/five|5 of us/i.test(text)) return 5;
+      if (/six|6 of us/i.test(text)) return 6;
       return null;
     },
   },
@@ -121,8 +145,20 @@ export class PlanningAgent {
     const missingFields = this.getMissingFields();
 
     if (missingFields.length > 0 && this.state.clarificationCount < MAX_CLARIFICATIONS) {
-      const question = this.getNextQuestion(missingFields);
+      // Use LLM for natural question generation
+      let question: string;
+      try {
+        question = await generateClarifyingQuestion({
+          questionType: missingFields[0],
+          previousAnswers: this.state.preferences,
+          questionNumber: this.state.clarificationCount + 1,
+          maxQuestions: MAX_CLARIFICATIONS,
+        });
+      } catch {
+        question = this.getNextQuestion(missingFields);
+      }
       this.state.clarificationCount++;
+      this.state.questionsAsked.push(question);
 
       return {
         success: true,
@@ -133,7 +169,7 @@ export class PlanningAgent {
     }
 
     // Show confirmation before generating
-    return this.showConfirmation();
+    return await this.showConfirmation();
   }
 
   /**
@@ -166,8 +202,20 @@ export class PlanningAgent {
     const missingFields = this.getMissingFields();
 
     if (missingFields.length > 0 && this.state.clarificationCount < MAX_CLARIFICATIONS) {
-      const question = this.getNextQuestion(missingFields);
+      // Use LLM for natural question generation
+      let question: string;
+      try {
+        question = await generateClarifyingQuestion({
+          questionType: missingFields[0],
+          previousAnswers: this.state.preferences,
+          questionNumber: this.state.clarificationCount + 1,
+          maxQuestions: MAX_CLARIFICATIONS,
+        });
+      } catch {
+        question = this.getNextQuestion(missingFields);
+      }
       this.state.clarificationCount++;
+      this.state.questionsAsked.push(question);
 
       return {
         success: true,
@@ -178,44 +226,57 @@ export class PlanningAgent {
     }
 
     // Show confirmation before generating
-    return this.showConfirmation();
+    return await this.showConfirmation();
   }
 
   /**
    * Show confirmation of understood constraints
    */
-  private showConfirmation(): AgentResponse {
+  private async showConfirmation(): Promise<AgentResponse> {
     const prefs = this.state.preferences;
     this.state.awaitingConfirmation = true;
-
-    // Build confirmation message
-    const constraints: string[] = [];
-
-    constraints.push(`${prefs.numDays || 2} days in Ooty`);
-    constraints.push(`${prefs.pace || "moderate"} pace`);
-
-    if (prefs.interests && prefs.interests.length > 0) {
-      constraints.push(`interests in ${prefs.interests.join(", ")}`);
-    }
-
-    if (prefs.travelParty) {
-      constraints.push(`traveling ${prefs.travelParty === "solo" ? "solo" : `as a ${prefs.travelParty}`}`);
-    }
-
-    if (prefs.dietaryPreference && prefs.dietaryPreference !== "any") {
-      constraints.push(`${prefs.dietaryPreference} food preference`);
-    }
-
-    if (prefs.specialRequests) {
-      constraints.push(`special request: ${prefs.specialRequests.slice(0, 50)}...`);
-    }
 
     // Get seasonal info
     const seasonInfo = getSeasonInfo(prefs.startDate || new Date());
 
-    const message = `Let me confirm your trip details: ${constraints.join(", ")}. ` +
-      `The weather in Ooty is typically ${seasonInfo.typicalWeather.condition} this time of year. ` +
-      `Should I create your itinerary based on these preferences? Say yes to proceed or tell me what to change.`;
+    // Get vehicle recommendation based on group size
+    const groupSize = prefs.groupSize || 2;
+    const recommendedVehicle = getRecommendedVehicle(groupSize);
+
+    // Build preferences object for LLM
+    const prefsForLLM = {
+      numDays: prefs.numDays || 2,
+      pace: prefs.pace || "moderate",
+      interests: prefs.interests,
+      travelParty: prefs.travelParty,
+      groupSize,
+      dietaryPreference: prefs.dietaryPreference,
+      vehicleRecommendation: recommendedVehicle,
+    };
+
+    // Use LLM to generate natural confirmation message
+    let message: string;
+    try {
+      message = await generateConfirmationMessage({
+        preferences: prefsForLLM,
+        weatherInfo: seasonInfo.typicalWeather,
+      });
+    } catch {
+      // Fallback to generated message
+      const constraints: string[] = [];
+      constraints.push(`${prefs.numDays || 2} days in Ooty`);
+      constraints.push(`${prefs.pace || "moderate"} pace`);
+      if (prefs.interests && prefs.interests.length > 0) {
+        constraints.push(`interests in ${prefs.interests.join(", ")}`);
+      }
+      if (prefs.travelParty) {
+        constraints.push(`traveling ${prefs.travelParty === "solo" ? "solo" : `as a ${prefs.travelParty}`}`);
+      }
+      if (groupSize > 1) {
+        constraints.push(`${groupSize} people`);
+      }
+      message = `Let me confirm: ${constraints.join(", ")}. Weather will be ${seasonInfo.typicalWeather.condition}. Should I create your itinerary?`;
+    }
 
     return {
       success: true,
@@ -391,7 +452,7 @@ export class PlanningAgent {
         };
       }
 
-      // Build the itinerary with per-POI reasoning and food preferences
+      // Build the itinerary with per-POI reasoning, food preferences, and travel costs
       const itineraryResult = await buildItinerary({
         pois: poiResult.pois,
         numDays: preferences.numDays,
@@ -401,6 +462,9 @@ export class PlanningAgent {
         travelTimeMatrix: travelTimesData.matrix,
         poiReasons: poiResult.poiReasons,
         dietaryPreference: preferences.dietaryPreference,
+        startDate: preferences.startDate,
+        groupSize: preferences.groupSize,
+        vehicleType: preferences.vehicleType,
       });
 
       // Create the full itinerary object
@@ -417,8 +481,8 @@ export class PlanningAgent {
         })),
       };
 
-      // Generate response message with grounded explanations
-      const message = this.generateItineraryMessage(itinerary, itineraryResult, poiResult.reasoning);
+      // Generate response message with grounded explanations using LLM
+      const message = await this.generateItineraryMessage(itinerary, itineraryResult, poiResult.reasoning);
 
       return {
         success: true,
@@ -442,6 +506,7 @@ export class PlanningAgent {
    */
   private finalizePreferences(): TripPreferences {
     const prefs = this.state.preferences;
+    const groupSize = prefs.groupSize || (prefs.travelParty === "solo" ? 1 : prefs.travelParty === "couple" ? 2 : 4);
 
     return {
       city: "ooty",
@@ -456,6 +521,8 @@ export class PlanningAgent {
       budget: prefs.budget || "moderate",
       mobility: prefs.mobility || "full",
       travelParty: prefs.travelParty || "couple",
+      groupSize,
+      vehicleType: getRecommendedVehicle(groupSize),
       dietaryPreference: prefs.dietaryPreference || "any",
       specialRequests: prefs.specialRequests,
     };
@@ -464,40 +531,73 @@ export class PlanningAgent {
   /**
    * Generate a human-readable message with grounded explanations
    */
-  private generateItineraryMessage(
+  private async generateItineraryMessage(
     itinerary: Itinerary,
     result: { warnings: string[]; unscheduled: unknown[] },
     reasoning?: string
-  ): string {
+  ): Promise<string> {
     const { days, preferences } = itinerary;
-    const totalPOIs = days.reduce((sum, day) => sum + day.blocks.length, 0);
 
-    let message = `I've created a ${preferences.numDays}-day ${preferences.pace} itinerary with ${totalPOIs} activities. `;
+    // Calculate total travel cost
+    const totalDistanceKm = days.reduce((sum, d) => sum + (d.totalDistanceKm || 0), 0);
+    const totalTravelCost = days.reduce((sum, d) => sum + (d.travelCostInr || 0), 0);
 
-    // Add grounded explanation
-    if (reasoning) {
-      message += reasoning + " ";
-    }
-
-    // Add highlights with reasons
-    if (days.length > 0 && days[0].blocks.length > 0) {
-      const firstPOI = days[0].blocks[0];
-      message += `Day 1 starts with ${firstPOI.poi.name}`;
-      if (firstPOI.notes) {
-        message += ` - ${firstPOI.notes.split(".")[0]}.`;
-      } else {
-        message += ". ";
+    // Get highlights for LLM
+    const highlights: string[] = [];
+    if (days.length > 0) {
+      for (const day of days) {
+        if (day.blocks.length > 0) {
+          highlights.push(`Day ${day.dayNumber}: ${day.blocks.map(b => b.poi.name).slice(0, 2).join(", ")}`);
+        }
       }
     }
 
-    // Add warnings if any
-    if (result.warnings && result.warnings.length > 0) {
-      message += `Note: ${result.warnings[0]} `;
+    // Try LLM-powered response
+    try {
+      const llmMessage = await generateItineraryResponse({
+        itinerary,
+        userRequest: reasoning || "plan a trip to Ooty",
+        highlights: highlights.slice(0, 3),
+        warnings: result.warnings,
+      });
+
+      // Append travel cost info
+      if (totalTravelCost > 0 && preferences.vehicleType) {
+        return `${llmMessage} Estimated travel cost: ${formatCostBreakdown({ totalDistanceKm, vehicleType: preferences.vehicleType, numDays: preferences.numDays })}.`;
+      }
+
+      return llmMessage;
+    } catch {
+      // Fallback to generated message
+      const totalPOIs = days.reduce((sum, day) => sum + day.blocks.length, 0);
+      let message = `I've created a ${preferences.numDays}-day ${preferences.pace} itinerary with ${totalPOIs} activities. `;
+
+      if (reasoning) {
+        message += reasoning + " ";
+      }
+
+      if (days.length > 0 && days[0].blocks.length > 0) {
+        const firstPOI = days[0].blocks[0];
+        message += `Day 1 starts with ${firstPOI.poi.name}`;
+        if (firstPOI.notes) {
+          message += ` - ${firstPOI.notes.split(".")[0]}.`;
+        } else {
+          message += ". ";
+        }
+      }
+
+      if (result.warnings && result.warnings.length > 0) {
+        message += `Note: ${result.warnings[0]} `;
+      }
+
+      if (totalTravelCost > 0) {
+        message += `Estimated travel: ${Math.round(totalDistanceKm)}km, around ₹${totalTravelCost}. `;
+      }
+
+      message += "You can ask me to modify anything - add places, remove activities, or shuffle the order.";
+
+      return message;
     }
-
-    message += "You can ask me to modify anything - add places, remove activities, or shuffle the order.";
-
-    return message;
   }
 
   /**
