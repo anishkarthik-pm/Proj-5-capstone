@@ -8,7 +8,7 @@ import type { Itinerary, POI } from "@/types";
 import { getSeasonInfo } from "@/services/mcp/weatherAdjustment";
 
 /**
- * Generate a natural response for itinerary creation
+ * Generate a natural response for itinerary creation with day-by-day summary
  */
 export async function generateItineraryResponse(params: {
   itinerary: Itinerary;
@@ -19,31 +19,48 @@ export async function generateItineraryResponse(params: {
   const { itinerary, userRequest, highlights, warnings } = params;
 
   const totalActivities = itinerary.days.reduce((sum, d) => sum + d.blocks.length, 0);
-  const dayThemes = itinerary.days.map((d) => d.theme || "Mixed").join(", ");
 
   // Get weather info
   const weatherInfo = getSeasonInfo(itinerary.preferences.startDate || new Date());
+
+  // Build day-by-day summary
+  const daySummaries = itinerary.days.map((day) => {
+    const places = day.blocks.map((b) => b.poi.name).join(", ");
+    const theme = day.theme || "Mixed activities";
+    return `Day ${day.dayNumber} (${theme}): ${places}`;
+  }).join("\n");
 
   const prompt = `You are a friendly travel assistant who just created an Ooty trip itinerary.
 
 User's request: "${userRequest}"
 
-Itinerary created:
-- ${itinerary.preferences.numDays} days, ${totalActivities} activities
+ITINERARY SUMMARY:
+${daySummaries}
+
+Details:
+- Total: ${itinerary.preferences.numDays} days, ${totalActivities} activities
 - Pace: ${itinerary.preferences.pace}
-- Day themes: ${dayThemes}
 - Weather: ${weatherInfo.typicalWeather.condition}, around ${weatherInfo.typicalWeather.temperature}°C
 
-${highlights && highlights.length > 0 ? `Key highlights: ${highlights.join(", ")}` : ""}
+${highlights && highlights.length > 0 ? `Highlights: ${highlights.join(", ")}` : ""}
 ${warnings && warnings.length > 0 ? `Notes: ${warnings.join(", ")}` : ""}
 
-Generate a warm, conversational response (2-3 sentences) that:
-1. Confirms what you created
-2. Mentions 1-2 specific highlights
+Generate a warm response that:
+1. Briefly confirms the trip is ready
+2. Lists each day with its theme and 2-3 key places (be specific!)
 3. Mentions the weather briefly
-4. Invites them to modify if needed
+4. Invites modifications
 
-Be natural and friendly. Don't use emojis. Speak directly to the traveler.`;
+Format like:
+"Here's your [X]-day Ooty adventure!
+
+Day 1 focuses on [theme] - you'll visit [place1], [place2], and [place3].
+Day 2 is all about [theme] with [place1] and [place2].
+...
+
+The weather should be [condition]. Let me know if you'd like any changes!"
+
+Be natural and conversational. No emojis.`;
 
   try {
     const result = await generateCompletion([{ role: "user", content: prompt }]);
@@ -55,7 +72,14 @@ Be natural and friendly. Don't use emojis. Speak directly to the traveler.`;
 
 function generateFallbackResponse(itinerary: Itinerary): string {
   const total = itinerary.days.reduce((sum, d) => sum + d.blocks.length, 0);
-  return `I've created a ${itinerary.preferences.numDays}-day itinerary with ${total} activities for you. Let me know if you'd like to make any changes!`;
+
+  // Build day summaries
+  const daySummaries = itinerary.days.map((day) => {
+    const places = day.blocks.slice(0, 3).map((b) => b.poi.name).join(", ");
+    return `Day ${day.dayNumber}: ${places}`;
+  }).join(". ");
+
+  return `I've created a ${itinerary.preferences.numDays}-day itinerary with ${total} activities! ${daySummaries}. Let me know if you'd like to make any changes!`;
 }
 
 /**
@@ -270,6 +294,127 @@ export async function generateConfirmationMessage(params: {
   return `Let me confirm: ${summary}. The weather in Ooty is typically ${weatherInfo.condition} with temperatures around ${weatherInfo.temperature}°C. Should I create your itinerary based on these preferences? Say yes to proceed, or tell me what to change.`;
 }
 
+/**
+ * LLM-based intent parser for edit requests
+ */
+export interface ParsedEditIntent {
+  action: "add" | "remove" | "replace" | "swap" | "suggest" | "swap_days" | "unknown";
+  dayNumber?: number;
+  timeSlot?: "morning" | "afternoon" | "evening";
+  targetDayNumber?: number; // For swapping days
+  poiName?: string; // Specific place mentioned
+  poiType?: string; // Type of place (tea garden, restaurant, etc.)
+  needsOptions?: boolean; // User wants to see options first
+  confidence: number;
+}
+
+export async function parseEditIntent(params: {
+  userText: string;
+  currentItinerary: Itinerary;
+}): Promise<ParsedEditIntent> {
+  const { userText, currentItinerary } = params;
+
+  // Build context about current itinerary
+  const daysSummary = currentItinerary.days.map(d => {
+    const activities = d.blocks.map(b => `${b.timeSlot}: ${b.poi.name}`).join(", ");
+    return `Day ${d.dayNumber}: ${activities}`;
+  }).join("\n");
+
+  const prompt = `You are parsing a user's request to modify their Ooty trip itinerary.
+
+CURRENT ITINERARY:
+${daysSummary}
+
+USER REQUEST: "${userText}"
+
+Parse the request and return a JSON object with these fields:
+- action: One of "add", "remove", "replace", "swap", "suggest", "swap_days", or "unknown"
+- dayNumber: Which day (1, 2, etc.) or null if not specified
+- timeSlot: "morning", "afternoon", "evening" or null
+- targetDayNumber: For swapping days, the other day number
+- poiName: Specific place name mentioned or null
+- poiType: Type of place wanted (tea, food, nature, museum, etc.) or null
+- needsOptions: true if user wants to see options before deciding, false otherwise
+- confidence: 0-1 how confident you are in this interpretation
+
+Examples:
+- "replace the morning activity" -> {"action":"replace","timeSlot":"morning","needsOptions":true,"confidence":0.9}
+- "add a tea garden to day 2" -> {"action":"add","dayNumber":2,"poiType":"tea","needsOptions":false,"confidence":0.95}
+- "swap day 1 and day 2" -> {"action":"swap_days","dayNumber":1,"targetDayNumber":2,"confidence":0.95}
+- "suggest something else" -> {"action":"suggest","needsOptions":true,"confidence":0.9}
+- "remove botanical garden" -> {"action":"remove","poiName":"botanical garden","confidence":0.9}
+- "I want to change something" -> {"action":"replace","needsOptions":true,"confidence":0.7}
+
+Return ONLY the JSON object, no other text.`;
+
+  try {
+    const result = await generateCompletion([{ role: "user", content: prompt }]);
+    const content = result?.content || "";
+
+    // Extract JSON from response
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]) as ParsedEditIntent;
+      return {
+        action: parsed.action || "unknown",
+        dayNumber: parsed.dayNumber,
+        timeSlot: parsed.timeSlot,
+        targetDayNumber: parsed.targetDayNumber,
+        poiName: parsed.poiName,
+        poiType: parsed.poiType,
+        needsOptions: parsed.needsOptions ?? true,
+        confidence: parsed.confidence || 0.5,
+      };
+    }
+  } catch (error) {
+    console.error("Error parsing edit intent with LLM:", error);
+  }
+
+  // Fallback to basic regex parsing
+  return fallbackParseIntent(userText);
+}
+
+function fallbackParseIntent(text: string): ParsedEditIntent {
+  const lowerText = text.toLowerCase();
+
+  // Extract day number
+  let dayNumber: number | undefined;
+  const dayMatch = lowerText.match(/day\s*(\d+)/i);
+  if (dayMatch) dayNumber = parseInt(dayMatch[1], 10);
+
+  // Extract time slot
+  let timeSlot: "morning" | "afternoon" | "evening" | undefined;
+  if (/morning/i.test(lowerText)) timeSlot = "morning";
+  else if (/afternoon/i.test(lowerText)) timeSlot = "afternoon";
+  else if (/evening/i.test(lowerText)) timeSlot = "evening";
+
+  // Determine action
+  if (/suggest|recommend|other|options|ideas/i.test(lowerText)) {
+    return { action: "suggest", dayNumber, timeSlot, needsOptions: true, confidence: 0.8 };
+  }
+  if (/swap\s+day.*and.*day|switch.*days/i.test(lowerText)) {
+    const swapMatch = lowerText.match(/day\s*(\d+).*day\s*(\d+)/i);
+    return {
+      action: "swap_days",
+      dayNumber: swapMatch ? parseInt(swapMatch[1], 10) : 1,
+      targetDayNumber: swapMatch ? parseInt(swapMatch[2], 10) : 2,
+      confidence: 0.85,
+    };
+  }
+  if (/add|include|put/i.test(lowerText)) {
+    return { action: "add", dayNumber, timeSlot, needsOptions: false, confidence: 0.8 };
+  }
+  if (/remove|delete|cancel|skip/i.test(lowerText)) {
+    return { action: "remove", dayNumber, timeSlot, needsOptions: false, confidence: 0.8 };
+  }
+  if (/replace|change|swap|instead/i.test(lowerText)) {
+    const hasTarget = /with\s+\w+/i.test(lowerText);
+    return { action: "replace", dayNumber, timeSlot, needsOptions: !hasTarget, confidence: 0.75 };
+  }
+
+  return { action: "unknown", confidence: 0.3 };
+}
+
 const conversationLLM = {
   generateItineraryResponse,
   generateEditResponse,
@@ -277,6 +422,7 @@ const conversationLLM = {
   generateSuggestionResponse,
   generateClarifyingQuestion,
   generateConfirmationMessage,
+  parseEditIntent,
 };
 
 export default conversationLLM;

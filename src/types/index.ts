@@ -46,6 +46,8 @@ export interface TripPreferences {
   travelParty: "solo" | "couple" | "family" | "group";
   groupSize?: number; // Number of people for vehicle selection
   vehicleType?: "hatchback" | "sedan" | "suv" | "tempo"; // For cost calculation
+  hotelCategory?: "3-star" | "4-star" | "5-star"; // Hotel star rating
+  hotelId?: string; // Selected hotel ID
   dietaryPreference?: "veg" | "non-veg" | "any"; // Food preference
   specialRequests?: string;
 }

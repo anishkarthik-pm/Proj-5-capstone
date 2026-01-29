@@ -1,9 +1,11 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { IndianRupee, Calculator, Info } from "lucide-react";
+import { IndianRupee, Calculator, Info, Car, Hotel } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Itinerary } from "@/types";
+import { VEHICLE_RATES, type VehicleType } from "@/services/mcp/travelCostCalculator";
+import { getRecommendedHotel, calculateHotelCost, type HotelRecommendation } from "@/services/mcp/hotelCalculator";
 
 interface CostBreakdownProps {
   itinerary: Itinerary;
@@ -136,11 +138,49 @@ export function CostBreakdown({ itinerary, className }: CostBreakdownProps) {
     // Sort by total cost descending
     categories.sort((a, b) => b.totalCost - a.totalCost);
 
+    // Calculate travel cost
+    const totalDistanceKm = itinerary.days.reduce((sum, d) => sum + (d.totalDistanceKm || 0), 0);
+    const vehicleType = (itinerary.preferences.vehicleType || "sedan") as VehicleType;
+    const vehicleInfo = VEHICLE_RATES[vehicleType];
+    const travelBaseCost = Math.round(totalDistanceKm * vehicleInfo.perKmRate);
+    const travelGst = Math.round(travelBaseCost * 0.05); // 5% GST on transport
+    const travelTotalCost = travelBaseCost + travelGst;
+
+    // Calculate hotel cost
+    let hotelRecommendation: HotelRecommendation | null = null;
+    const numNights = Math.max(itinerary.preferences.numDays - 1, 1);
+    const groupSize = itinerary.preferences.groupSize || 2;
+
+    if (itinerary.preferences.hotelId) {
+      hotelRecommendation = calculateHotelCost({
+        hotelId: itinerary.preferences.hotelId,
+        groupSize,
+        numNights,
+      });
+    } else {
+      hotelRecommendation = getRecommendedHotel({
+        groupSize,
+        numNights,
+        budget: itinerary.preferences.budget || "moderate",
+      });
+    }
+
     return {
       categories,
       totalBase,
       totalGst,
-      grandTotal: totalBase + totalGst,
+      activitiesTotal: totalBase + totalGst,
+      // Travel
+      travelDistanceKm: Math.round(totalDistanceKm),
+      vehicleType,
+      vehicleName: vehicleInfo.name,
+      travelBaseCost,
+      travelGst,
+      travelTotalCost,
+      // Hotel
+      hotelRecommendation,
+      // Grand total
+      grandTotal: totalBase + totalGst + travelTotalCost + (hotelRecommendation?.totalPrice || 0),
     };
   }, [itinerary]);
 
@@ -190,24 +230,87 @@ export function CostBreakdown({ itinerary, className }: CostBreakdownProps) {
         ))}
       </div>
 
+      {/* Travel Cost Section */}
+      <div className="border-t pt-3 mt-3">
+        <div className="flex items-center gap-2 mb-2">
+          <Car className="w-4 h-4 text-blue-500" />
+          <span className="font-medium text-sm">Travel (Vehicle)</span>
+        </div>
+        <div className="text-sm space-y-1">
+          <div className="flex justify-between text-muted-foreground">
+            <span>{breakdown.vehicleName}</span>
+            <span>{breakdown.travelDistanceKm} km</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Base + GST (5%)</span>
+            <span>
+              <IndianRupee className="w-3 h-3 inline" />
+              {breakdown.travelTotalCost.toLocaleString("en-IN")}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Hotel Cost Section */}
+      {breakdown.hotelRecommendation && (
+        <div className="border-t pt-3 mt-3">
+          <div className="flex items-center gap-2 mb-2">
+            <Hotel className="w-4 h-4 text-purple-500" />
+            <span className="font-medium text-sm">Accommodation</span>
+          </div>
+          <div className="text-sm space-y-1">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground truncate max-w-[60%]">
+                {breakdown.hotelRecommendation.hotel.name}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {breakdown.hotelRecommendation.hotel.category}
+              </span>
+            </div>
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>
+                <IndianRupee className="w-2.5 h-2.5 inline" />
+                {breakdown.hotelRecommendation.pricePerNight.toLocaleString("en-IN")}/night × {breakdown.hotelRecommendation.totalNights} nights
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Total + GST (12%)</span>
+              <span>
+                <IndianRupee className="w-3 h-3 inline" />
+                {breakdown.hotelRecommendation.totalPrice.toLocaleString("en-IN")}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Totals */}
-      <div className="border-t pt-3 space-y-2">
+      <div className="border-t pt-3 mt-3 space-y-2">
         <div className="flex justify-between text-sm">
-          <span className="text-muted-foreground">Subtotal</span>
+          <span className="text-muted-foreground">Activities & Entry</span>
           <span>
             <IndianRupee className="w-3 h-3 inline" />
-            {breakdown.totalBase.toLocaleString("en-IN")}
+            {breakdown.activitiesTotal.toLocaleString("en-IN")}
           </span>
         </div>
         <div className="flex justify-between text-sm">
-          <span className="text-muted-foreground">Total GST</span>
+          <span className="text-muted-foreground">Travel</span>
           <span>
             <IndianRupee className="w-3 h-3 inline" />
-            {breakdown.totalGst.toLocaleString("en-IN")}
+            {breakdown.travelTotalCost.toLocaleString("en-IN")}
           </span>
         </div>
+        {breakdown.hotelRecommendation && (
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Accommodation</span>
+            <span>
+              <IndianRupee className="w-3 h-3 inline" />
+              {breakdown.hotelRecommendation.totalPrice.toLocaleString("en-IN")}
+            </span>
+          </div>
+        )}
         <div className="flex justify-between font-semibold text-lg border-t pt-2">
-          <span>Grand Total</span>
+          <span>Trip Total</span>
           <span className="text-primary">
             <IndianRupee className="w-4 h-4 inline" />
             {breakdown.grandTotal.toLocaleString("en-IN")}
@@ -219,9 +322,8 @@ export function CostBreakdown({ itinerary, className }: CostBreakdownProps) {
       <div className="mt-4 flex items-start gap-2 text-xs text-muted-foreground bg-muted/50 p-2 rounded">
         <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
         <p>
-          This estimate includes entry fees and activity costs only. Food at restaurants,
-          local transport, and accommodation are not included. GST rates: 0% for nature
-          spots, 5% for heritage/food, 12% for shopping, 18% for activities.
+          Estimate includes entry fees, vehicle travel, and accommodation. Food and
+          shopping not included. You can change hotel category in preferences.
         </p>
       </div>
     </div>

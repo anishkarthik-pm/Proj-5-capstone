@@ -1,0 +1,118 @@
+{
+  "city": "ooty",
+  "lastUpdated": "2025-01-29",
+  "hotels": [
+    {
+      "id": "hotel_savoy",
+      "name": "Savoy - IHCL SeleQtions",
+      "category": "5-star",
+      "pricePerNight": {
+        "single": 12000,
+        "double": 14000,
+        "triple": 18000,
+        "family": 22000
+      },
+      "amenities": ["WiFi", "Restaurant", "Spa", "Heritage Property", "Garden", "Room Service"],
+      "rating": 4.6,
+      "location": "Near Botanical Garden",
+      "description": "Heritage luxury hotel from 1829 with colonial charm and modern amenities"
+    },
+    {
+      "id": "hotel_sterling",
+      "name": "Sterling Ooty Elk Hill",
+      "category": "4-star",
+      "pricePerNight": {
+        "single": 6500,
+        "double": 7500,
+        "triple": 9500,
+        "family": 12000
+      },
+      "amenities": ["WiFi", "Restaurant", "Indoor Games", "Bonfire", "Kids Play Area"],
+      "rating": 4.3,
+      "location": "Elk Hill",
+      "description": "Premium resort with hill views and family-friendly amenities"
+    },
+    {
+      "id": "hotel_gateway",
+      "name": "Gateway Coonoor",
+      "category": "4-star",
+      "pricePerNight": {
+        "single": 7000,
+        "double": 8500,
+        "triple": 11000,
+        "family": 14000
+      },
+      "amenities": ["WiFi", "Multi-Cuisine Restaurant", "Tea Lounge", "Spa", "Garden"],
+      "rating": 4.4,
+      "location": "Coonoor (30 mins from Ooty)",
+      "description": "Taj property amidst tea estates with panoramic valley views"
+    },
+    {
+      "id": "hotel_fortune",
+      "name": "Fortune Resort Sullivan Court",
+      "category": "4-star",
+      "pricePerNight": {
+        "single": 5500,
+        "double": 6500,
+        "triple": 8500,
+        "family": 11000
+      },
+      "amenities": ["WiFi", "Restaurant", "Bar", "Conference Room", "Travel Desk"],
+      "rating": 4.2,
+      "location": "Selbourne Road",
+      "description": "Centrally located business hotel with modern facilities"
+    },
+    {
+      "id": "hotel_sinclairs",
+      "name": "Sinclairs Retreat Ooty",
+      "category": "3-star",
+      "pricePerNight": {
+        "single": 3500,
+        "double": 4200,
+        "triple": 5500,
+        "family": 7000
+      },
+      "amenities": ["WiFi", "Restaurant", "Room Service", "Parking", "Garden"],
+      "rating": 4.0,
+      "location": "Mysore Road",
+      "description": "Comfortable mid-range hotel with scenic surroundings"
+    },
+    {
+      "id": "hotel_monarch",
+      "name": "Hotel Monarch",
+      "category": "3-star",
+      "pricePerNight": {
+        "single": 2800,
+        "double": 3500,
+        "triple": 4500,
+        "family": 6000
+      },
+      "amenities": ["WiFi", "Restaurant", "Room Service", "Parking"],
+      "rating": 3.9,
+      "location": "Commercial Road",
+      "description": "Value-for-money hotel in the heart of Ooty"
+    },
+    {
+      "id": "hotel_lake_view",
+      "name": "Hotel Lake View",
+      "category": "3-star",
+      "pricePerNight": {
+        "single": 3000,
+        "double": 3800,
+        "triple": 5000,
+        "family": 6500
+      },
+      "amenities": ["WiFi", "Restaurant", "Lake View Rooms", "Parking"],
+      "rating": 3.8,
+      "location": "Near Ooty Lake",
+      "description": "Affordable hotel with beautiful lake views"
+    }
+  ],
+  "roomTypes": {
+    "single": "1 person",
+    "double": "2 persons",
+    "triple": "3-4 persons",
+    "family": "5-6 persons"
+  },
+  "gstRate": 0.12
+}

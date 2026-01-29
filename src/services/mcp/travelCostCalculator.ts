@@ -66,8 +66,8 @@ export function getVehicleOptions(totalDistanceKm: number) {
  * Calculate distance from travel time
  */
 export function estimateDistanceKm(travelTimeMins: number): number {
-  // Distance = Speed × Time
-  return Math.round((AVG_SPEED_KMH * travelTimeMins) / 60 * 10) / 10;
+  // Distance = Speed × Time, round to whole number for cleaner display
+  return Math.round((AVG_SPEED_KMH * travelTimeMins) / 60);
 }
 
 /**
@@ -107,7 +107,7 @@ export function calculateTravelCost(params: {
   }
 
   return {
-    totalDistanceKm: Math.round(totalDistanceKm * 10) / 10,
+    totalDistanceKm: Math.round(totalDistanceKm),
     totalCostInr: Math.round(totalDistanceKm * rate.perKmRate),
     segments,
     vehicleInfo: rate,
@@ -151,7 +151,7 @@ export function calculateItineraryTravelCost(params: {
   }
 
   return {
-    totalDistanceKm: Math.round(totalDistanceKm * 10) / 10,
+    totalDistanceKm: Math.round(totalDistanceKm),
     totalCostInr: Math.round(totalDistanceKm * rate.perKmRate),
     perDayCosts,
     vehicleInfo: rate,

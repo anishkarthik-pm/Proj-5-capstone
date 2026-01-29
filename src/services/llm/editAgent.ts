@@ -13,22 +13,35 @@ import {
   generateEditResponse,
   generateSuggestionResponse,
   generatePOIReasoning,
+  parseEditIntent,
+  type ParsedEditIntent,
 } from "./conversationLLM";
 
 interface EditOperation {
-  type: "add" | "remove" | "swap" | "replace" | "move" | "adjust_pace" | "swap_days" | "suggest";
+  type: "add" | "remove" | "swap" | "replace" | "move" | "adjust_pace" | "swap_days" | "suggest" | "replace_with_options";
   dayNumber: number;
   blockId?: string;
   timeSlot?: "morning" | "afternoon" | "evening";
   newPOI?: POI;
   targetDayNumber?: number;
   description: string;
+  replacementOptions?: POI[];
+}
+
+// Pending modification state for two-step flow
+interface PendingModification {
+  type: "awaiting_replacement_choice" | "awaiting_slot_choice";
+  dayNumber: number;
+  blockToReplace?: TimeBlock;
+  options?: POI[];
+  selectedPOI?: POI;
 }
 
 /**
  * Edit Agent - handles modification requests to existing itineraries
  */
 export class EditAgent {
+  private pendingModification: PendingModification | null = null;
   /**
    * Handle an edit intent
    */
@@ -45,6 +58,11 @@ export class EditAgent {
           "I don't have an itinerary to edit yet. Would you like me to create one first?",
         shouldSpeak: true,
       };
+    }
+
+    // Check if there's a pending modification that needs a response
+    if (this.pendingModification) {
+      return this.handlePendingModification(intent, currentItinerary);
     }
 
     try {
@@ -76,114 +94,263 @@ export class EditAgent {
   }
 
   /**
-   * Parse the user's edit request into an operation
+   * Handle response to a pending modification (two-step flow)
+   */
+  private async handlePendingModification(
+    intent: VoiceIntent,
+    itinerary: Itinerary
+  ): Promise<AgentResponse> {
+    const pending = this.pendingModification!;
+    const text = intent.rawText.toLowerCase();
+
+    // User wants to cancel
+    if (/cancel|nevermind|no|stop|forget/i.test(text)) {
+      this.pendingModification = null;
+      return {
+        success: true,
+        message: "No problem, I've cancelled that change. What else would you like to do?",
+        shouldSpeak: true,
+      };
+    }
+
+    if (pending.type === "awaiting_replacement_choice" && pending.options) {
+      // User is selecting from options
+      let selectedPOI: POI | undefined;
+
+      // Check for number selection (e.g., "1", "option 1", "first one")
+      const numberMatch = text.match(/(\d+)|first|second|third|fourth|fifth/i);
+      if (numberMatch) {
+        const numberMap: Record<string, number> = { first: 1, second: 2, third: 3, fourth: 4, fifth: 5 };
+        const num = numberMatch[1] ? parseInt(numberMatch[1], 10) : numberMap[numberMatch[0].toLowerCase()];
+        if (num >= 1 && num <= pending.options.length) {
+          selectedPOI = pending.options[num - 1];
+        }
+      }
+
+      // Check for name match
+      if (!selectedPOI) {
+        for (const option of pending.options) {
+          if (text.includes(option.name.toLowerCase())) {
+            selectedPOI = option;
+            break;
+          }
+        }
+      }
+
+      if (selectedPOI) {
+        // Now ask for the slot
+        this.pendingModification = {
+          type: "awaiting_slot_choice",
+          dayNumber: pending.dayNumber,
+          blockToReplace: pending.blockToReplace,
+          selectedPOI,
+        };
+
+        const day = itinerary.days[pending.dayNumber - 1];
+        const slots = day.blocks.map(b => `${b.timeSlot} (${b.poi.name})`).join(", ");
+
+        return {
+          success: true,
+          message: `Great choice! ${selectedPOI.name} it is. Which time slot would you like to replace? Your Day ${pending.dayNumber} currently has: ${slots}. Just say "morning", "afternoon", or "evening".`,
+          data: { needsClarification: true, awaitingSlotChoice: true },
+          shouldSpeak: true,
+        };
+      } else {
+        return {
+          success: false,
+          message: "I didn't catch which option you want. Please say the number (1, 2, 3...) or the name of the place.",
+          data: { needsClarification: true },
+          shouldSpeak: true,
+        };
+      }
+    }
+
+    if (pending.type === "awaiting_slot_choice" && pending.selectedPOI) {
+      // User is selecting a slot
+      let targetSlot: "morning" | "afternoon" | "evening" | undefined;
+
+      if (/morning/i.test(text)) targetSlot = "morning";
+      else if (/afternoon/i.test(text)) targetSlot = "afternoon";
+      else if (/evening/i.test(text)) targetSlot = "evening";
+
+      if (targetSlot) {
+        const day = itinerary.days[pending.dayNumber - 1];
+        const blockToReplace = day.blocks.find(b => b.timeSlot === targetSlot);
+
+        if (blockToReplace) {
+          // Clear pending and execute the replacement
+          this.pendingModification = null;
+
+          const operation: EditOperation = {
+            type: "replace",
+            dayNumber: pending.dayNumber,
+            blockId: blockToReplace.id,
+            timeSlot: targetSlot,
+            newPOI: pending.selectedPOI,
+            description: `Replace ${blockToReplace.poi.name} with ${pending.selectedPOI.name}`,
+          };
+
+          return this.applyEdit(itinerary, operation);
+        } else {
+          return {
+            success: false,
+            message: `There's no activity in the ${targetSlot} slot on Day ${pending.dayNumber}. Please choose morning, afternoon, or evening.`,
+            data: { needsClarification: true },
+            shouldSpeak: true,
+          };
+        }
+      } else {
+        return {
+          success: false,
+          message: "Please say which slot to replace: morning, afternoon, or evening.",
+          data: { needsClarification: true },
+          shouldSpeak: true,
+        };
+      }
+    }
+
+    // Something went wrong, clear pending
+    this.pendingModification = null;
+    return {
+      success: false,
+      message: "I got a bit confused. Let's start over. What would you like to change?",
+      shouldSpeak: true,
+    };
+  }
+
+  /**
+   * Clear any pending modification state
+   */
+  clearPending(): void {
+    this.pendingModification = null;
+  }
+
+  /**
+   * Parse the user's edit request into an operation using LLM
    */
   private async parseEditOperation(
     intent: VoiceIntent,
     itinerary: Itinerary
   ): Promise<EditOperation | null> {
-    const text = intent.rawText.toLowerCase();
-    const { action, dayNumber, timeSlot } = intent;
+    const text = intent.rawText;
 
-    // Determine which day to modify
-    let targetDay = dayNumber;
-    if (!targetDay) {
-      // Try to extract from text
-      const dayMatch = text.match(/day\s*(\d+)/i);
-      if (dayMatch) {
-        targetDay = parseInt(dayMatch[1], 10);
-      } else if (text.includes("first day")) {
-        targetDay = 1;
-      } else if (text.includes("last day")) {
-        targetDay = itinerary.days.length;
-      } else if (text.includes("second day")) {
-        targetDay = 2;
-      }
+    // Use LLM to understand the intent
+    let parsedIntent: ParsedEditIntent;
+    try {
+      parsedIntent = await parseEditIntent({
+        userText: text,
+        currentItinerary: itinerary,
+      });
+      console.log("LLM parsed intent:", parsedIntent);
+    } catch (error) {
+      console.error("LLM parsing failed, using fallback:", error);
+      // Fallback to basic parsing
+      parsedIntent = this.fallbackParseIntent(text, itinerary);
     }
 
-    // If still no day specified, use day 1 as default
-    if (!targetDay) {
-      targetDay = 1;
-    }
+    // Determine target day
+    let targetDay = parsedIntent.dayNumber || intent.dayNumber || 1;
+    if (targetDay > itinerary.days.length) targetDay = itinerary.days.length;
+    if (targetDay < 1) targetDay = 1;
 
-    // Ensure day exists
-    if (targetDay > itinerary.days.length || targetDay < 1) {
-      return null;
-    }
+    const timeSlot = parsedIntent.timeSlot || intent.timeSlot;
 
-    // Determine the operation type
-    if (action === "remove" || /remove|delete|cancel|skip/.test(text)) {
-      return this.createRemoveOperation(
-        targetDay,
-        timeSlot,
-        text,
-        itinerary.days[targetDay - 1]
-      );
-    }
+    // Handle based on parsed action
+    switch (parsedIntent.action) {
+      case "suggest":
+        return {
+          type: "suggest",
+          dayNumber: targetDay,
+          description: `Suggest places for Day ${targetDay}`,
+        };
 
-    if (action === "add" || /add|include|put/.test(text)) {
-      return this.createAddOperation(
-        targetDay,
-        timeSlot,
-        text,
-        itinerary
-      );
-    }
-
-    if (action === "swap" || /swap|switch|exchange/.test(text)) {
-      // Check if swapping entire days (e.g., "swap day 1 and day 2")
-      const daySwapMatch = text.match(/(?:swap|switch|exchange)\s+day\s*(\d+)\s+(?:and|with)\s+day\s*(\d+)/i);
-      if (daySwapMatch) {
-        const day1 = parseInt(daySwapMatch[1], 10);
-        const day2 = parseInt(daySwapMatch[2], 10);
-        if (day1 >= 1 && day1 <= itinerary.days.length && day2 >= 1 && day2 <= itinerary.days.length) {
+      case "swap_days":
+        if (parsedIntent.targetDayNumber) {
           return {
             type: "swap_days",
-            dayNumber: day1,
-            targetDayNumber: day2,
-            description: `Swap Day ${day1} and Day ${day2}`,
+            dayNumber: targetDay,
+            targetDayNumber: parsedIntent.targetDayNumber,
+            description: `Swap Day ${targetDay} and Day ${parsedIntent.targetDayNumber}`,
           };
         }
-      }
-      return this.createSwapOperation(targetDay, text, itinerary);
-    }
+        return this.createSwapOperation(targetDay, text.toLowerCase(), itinerary);
 
-    // Check for suggestion requests
-    if (/suggest|recommend|what else|other places|more options|ideas/.test(text)) {
+      case "add":
+        return this.createAddOperation(targetDay, timeSlot, text.toLowerCase(), itinerary);
+
+      case "remove":
+        return this.createRemoveOperation(
+          targetDay,
+          timeSlot,
+          text.toLowerCase(),
+          itinerary.days[targetDay - 1]
+        );
+
+      case "replace":
+        // If user wants options first, use two-step flow
+        if (parsedIntent.needsOptions) {
+          return this.createReplaceWithOptionsOperation(targetDay, timeSlot, text.toLowerCase(), itinerary);
+        }
+        return this.createReplaceOperation(targetDay, timeSlot, text.toLowerCase(), itinerary);
+
+      case "swap":
+        return this.createSwapOperation(targetDay, text.toLowerCase(), itinerary);
+
+      default:
+        // Low confidence or unknown - ask for clarification
+        if (parsedIntent.confidence < 0.5) {
+          return null;
+        }
+        // Try to make a best guess
+        return this.createReplaceWithOptionsOperation(targetDay, timeSlot, text.toLowerCase(), itinerary);
+    }
+  }
+
+  /**
+   * Fallback intent parsing when LLM is unavailable
+   */
+  private fallbackParseIntent(text: string, itinerary: Itinerary): ParsedEditIntent {
+    const lowerText = text.toLowerCase();
+
+    // Extract day number
+    let dayNumber: number | undefined;
+    const dayMatch = lowerText.match(/day\s*(\d+)/i);
+    if (dayMatch) dayNumber = parseInt(dayMatch[1], 10);
+    else if (lowerText.includes("first day")) dayNumber = 1;
+    else if (lowerText.includes("last day")) dayNumber = itinerary.days.length;
+    else if (lowerText.includes("second day")) dayNumber = 2;
+
+    // Extract time slot
+    let timeSlot: "morning" | "afternoon" | "evening" | undefined;
+    if (/morning/i.test(lowerText)) timeSlot = "morning";
+    else if (/afternoon/i.test(lowerText)) timeSlot = "afternoon";
+    else if (/evening/i.test(lowerText)) timeSlot = "evening";
+
+    // Determine action
+    if (/suggest|recommend|other|options|ideas|what else/i.test(lowerText)) {
+      return { action: "suggest", dayNumber, timeSlot, needsOptions: true, confidence: 0.8 };
+    }
+    if (/swap\s+day.*and.*day|switch.*days/i.test(lowerText)) {
+      const swapMatch = lowerText.match(/day\s*(\d+).*day\s*(\d+)/i);
       return {
-        type: "suggest",
-        dayNumber: targetDay,
-        description: `Suggest places for Day ${targetDay}`,
+        action: "swap_days",
+        dayNumber: swapMatch ? parseInt(swapMatch[1], 10) : 1,
+        targetDayNumber: swapMatch ? parseInt(swapMatch[2], 10) : 2,
+        confidence: 0.85,
       };
     }
-
-    if (action === "replace" || /replace|instead|change.*to/.test(text)) {
-      return this.createReplaceOperation(
-        targetDay,
-        timeSlot,
-        text,
-        itinerary
-      );
+    if (/add|include|put/i.test(lowerText)) {
+      return { action: "add", dayNumber, timeSlot, needsOptions: false, confidence: 0.8 };
+    }
+    if (/remove|delete|cancel|skip/i.test(lowerText)) {
+      return { action: "remove", dayNumber, timeSlot, needsOptions: false, confidence: 0.8 };
+    }
+    if (/replace|change|swap|instead/i.test(lowerText)) {
+      const hasTarget = /with\s+(a\s+)?\w+/i.test(lowerText);
+      return { action: "replace", dayNumber, timeSlot, needsOptions: !hasTarget, confidence: 0.75 };
     }
 
-    // Check for pace adjustments
-    if (/more relaxed|less busy|fewer|slow down/.test(text)) {
-      return {
-        type: "adjust_pace",
-        dayNumber: targetDay,
-        description: `Make Day ${targetDay} more relaxed`,
-      };
-    }
-
-    if (/more packed|busier|more activities|add more/.test(text)) {
-      return {
-        type: "adjust_pace",
-        dayNumber: targetDay,
-        description: `Make Day ${targetDay} more packed`,
-      };
-    }
-
-    return null;
+    return { action: "unknown", dayNumber, timeSlot, confidence: 0.3 };
   }
 
   /**
@@ -400,6 +567,67 @@ export class EditAgent {
       timeSlot: blockToReplace.timeSlot,
       newPOI: result.pois[0],
       description: `Replace ${blockToReplace.poi.name} with ${result.pois[0].name}`,
+    };
+  }
+
+  /**
+   * Create a replace operation that shows options first (two-step flow)
+   */
+  private async createReplaceWithOptionsOperation(
+    dayNumber: number,
+    timeSlot: "morning" | "afternoon" | "evening" | undefined,
+    text: string,
+    itinerary: Itinerary
+  ): Promise<EditOperation | null> {
+    const day = itinerary.days[dayNumber - 1];
+    if (!day) return null;
+
+    // Find which block user wants to replace (if specified)
+    let blockToReplace: TimeBlock | undefined;
+
+    if (timeSlot) {
+      blockToReplace = day.blocks.find((b) => b.timeSlot === timeSlot);
+    } else {
+      // Try to find by name
+      for (const block of day.blocks) {
+        if (text.includes(block.poi.name.toLowerCase())) {
+          blockToReplace = block;
+          break;
+        }
+      }
+    }
+
+    // Search for replacement options
+    const existingPOIIds = itinerary.days
+      .flatMap((d) => d.blocks)
+      .map((b) => b.poi.id);
+
+    const result = await searchPOIs({
+      city: "ooty",
+      interests: itinerary.preferences.interests || ["nature"],
+      pace: itinerary.preferences.pace,
+      excludeIds: existingPOIIds,
+      maxResults: 5,
+    });
+
+    if (!result.pois || result.pois.length === 0) {
+      return null;
+    }
+
+    // Store pending modification for two-step flow
+    this.pendingModification = {
+      type: "awaiting_replacement_choice",
+      dayNumber,
+      blockToReplace,
+      options: result.pois,
+    };
+
+    return {
+      type: "replace_with_options",
+      dayNumber,
+      blockId: blockToReplace?.id,
+      description: "Show replacement options",
+      replacementOptions: result.pois,
     };
   }
 
@@ -665,6 +893,62 @@ export class EditAgent {
           }
         }
         // Handle making it more packed (would search for additional POIs)
+        break;
+
+      case "replace_with_options":
+        // Show options to user and wait for their selection
+        if (operation.replacementOptions && operation.replacementOptions.length > 0) {
+          const currentActivities = day.blocks.map(b => `${b.timeSlot}: ${b.poi.name}`).join(", ");
+
+          // Format options with LLM
+          try {
+            const llmResult = await generateSuggestionResponse({
+              suggestions: operation.replacementOptions,
+              userInterests: updatedItinerary.preferences.interests || ["nature"],
+              currentItinerary: updatedItinerary,
+            });
+
+            let message = `Here are some options to replace an activity on Day ${operation.dayNumber}:\n\n`;
+            for (let i = 0; i < llmResult.formattedSuggestions.length; i++) {
+              const s = llmResult.formattedSuggestions[i];
+              message += `${i + 1}. ${s.name}: ${s.reason}\n`;
+            }
+            message += `\nYour Day ${operation.dayNumber} currently has: ${currentActivities}.\n`;
+            message += `Which option would you like? Just say the number or name.`;
+
+            return {
+              success: true,
+              message,
+              data: {
+                needsClarification: true,
+                awaitingReplacementChoice: true,
+                options: operation.replacementOptions,
+                formattedSuggestions: llmResult.formattedSuggestions,
+                isSelectableList: true,
+              },
+              shouldSpeak: true,
+            };
+          } catch {
+            // Fallback without LLM
+            let message = `Here are some options for Day ${operation.dayNumber}:\n\n`;
+            operation.replacementOptions.slice(0, 3).forEach((poi, i) => {
+              message += `${i + 1}. ${poi.name} - ${poi.description.slice(0, 50)}...\n`;
+            });
+            message += `\nWhich would you like? Say the number or name.`;
+
+            return {
+              success: true,
+              message,
+              data: {
+                needsClarification: true,
+                awaitingReplacementChoice: true,
+                options: operation.replacementOptions,
+                isSelectableList: true,
+              },
+              shouldSpeak: true,
+            };
+          }
+        }
         break;
 
       case "swap_days":
