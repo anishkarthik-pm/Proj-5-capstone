@@ -1,23 +1,13 @@
 "use client";
 
 import React from "react";
-import { Calendar, Clock, Car, Cloud, Sun, CloudRain, CloudFog, Thermometer, IndianRupee, MapPin, Mountain, UtensilsCrossed } from "lucide-react";
+import { Calendar, Clock, Car, Cloud, Sun, CloudRain, CloudFog, Thermometer, IndianRupee, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { DayPlan, TimeBlock } from "@/types";
 import { TimeBlockCard } from "./TimeBlockCard";
 import { TravelSegment } from "./TravelSegment";
 
-/**
- * Check if a block is a food/restaurant spot
- */
-function isFoodSpot(block: TimeBlock): boolean {
-  return block.poi.category.some(
-    (c) => c.toLowerCase().includes("food") ||
-      c.toLowerCase().includes("restaurant") ||
-      c.toLowerCase().includes("cafe") ||
-      c.toLowerCase().includes("dining")
-  );
-}
+
 
 // Weather icon based on condition
 function WeatherIcon({ condition }: { condition?: string }) {

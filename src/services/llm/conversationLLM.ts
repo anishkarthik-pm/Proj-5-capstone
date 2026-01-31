@@ -124,7 +124,7 @@ export async function generatePOIReasoning(params: {
   timeSlot: string;
   dayTheme?: string;
 }): Promise<string> {
-  const { poi, userInterests, timeSlot, dayTheme } = params;
+  const { poi, userInterests, timeSlot } = params;
 
   const prompt = `Explain briefly why ${poi.name} is a good choice for this visitor.
   
@@ -594,7 +594,7 @@ export async function generateQueryResponse(params: {
   questionType: "why" | "what_if" | "info" | "feasibility" | "general";
   instructions: string;
 }): Promise<string> {
-  const { userQuestion, ragContext, currentItinerary, questionType, instructions } = params;
+  const { userQuestion, ragContext, currentItinerary, instructions } = params;
 
   // Build itinerary context
   let itineraryContext = "";
