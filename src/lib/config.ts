@@ -3,7 +3,9 @@ import type { AppConfig } from "@/types";
 export const config: AppConfig = {
   llm: {
     provider: (process.env.NEXT_PUBLIC_LLM_PROVIDER as "openai" | "anthropic" | "gemini") || "gemini",
-    model: process.env.NEXT_PUBLIC_LLM_MODEL || "gemini-1.5-flash",
+    // Use gemini-2.0-flash as default (latest available model)
+    // Can be overridden via NEXT_PUBLIC_LLM_MODEL env variable
+    model: process.env.NEXT_PUBLIC_LLM_MODEL || "gemini-2.0-flash",
     apiKey: process.env.GOOGLE_API_KEY || "",
   },
   voice: {

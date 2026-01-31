@@ -39,8 +39,11 @@ export function initializeGemini(apiKey?: string): boolean {
 
   try {
     geminiClient = new GoogleGenerativeAI(key);
+    // Use gemini-2.0-flash as default (gemini-1.5-flash was deprecated)
+    const modelName = config.llm.model || "gemini-2.0-flash";
+    console.log(`Initializing Gemini with model: ${modelName}`);
     geminiModel = geminiClient.getGenerativeModel({
-      model: config.llm.model || "gemini-1.5-flash"
+      model: modelName
     });
     return true;
   } catch (error) {
