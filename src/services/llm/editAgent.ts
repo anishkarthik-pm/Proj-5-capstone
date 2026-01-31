@@ -280,7 +280,7 @@ export class EditAgent {
             description: `Swap Day ${targetDay} and Day ${parsedIntent.targetDayNumber}`,
           };
         }
-        return this.createSwapOperation(targetDay, text.toLowerCase(), itinerary, parsedIntent);
+        return this.createSwapOperation(targetDay, text.toLowerCase(), itinerary);
 
       case "add":
         return this.createAddOperation(targetDay, timeSlot, text.toLowerCase(), itinerary, parsedIntent);
@@ -302,7 +302,7 @@ export class EditAgent {
         return this.createReplaceOperation(targetDay, timeSlot, text.toLowerCase(), itinerary, parsedIntent);
 
       case "swap":
-        return this.createSwapOperation(targetDay, text.toLowerCase(), itinerary, parsedIntent);
+        return this.createSwapOperation(targetDay, text.toLowerCase(), itinerary);
 
       default:
         // Low confidence or unknown - ask for clarification
@@ -498,7 +498,7 @@ export class EditAgent {
       .map((b) => b.poi.id);
 
     // Search for a POI matching the request
-    let searchTerms: string[] = [];
+    const searchTerms: string[] = [];
 
     // Use POI type or name from LLM if available
     if (parsedIntent?.poiType) {
@@ -550,8 +550,7 @@ export class EditAgent {
   private createSwapOperation(
     dayNumber: number,
     text: string,
-    itinerary: Itinerary,
-    parsedIntent?: ParsedEditIntent
+    itinerary: Itinerary
   ): EditOperation | null {
     const day = itinerary.days[dayNumber - 1];
     if (!day || day.blocks.length < 2) {
