@@ -117,7 +117,7 @@ export class Orchestrator {
         break;
 
       case "closure":
-        response = await this.handleClosureIntent(intent);
+        response = await this.handleClosureIntent();
         break;
 
       case "unclear":
@@ -205,7 +205,7 @@ export class Orchestrator {
   /**
    * Handle closure intent (e.g., "thank you", "that's it")
    */
-  private async handleClosureIntent(_intent: VoiceIntent): Promise<AgentResponse> {
+  private async handleClosureIntent(): Promise<AgentResponse> {
     const messages = [
       "You're very welcome! I'm glad I could help you plan your Ooty adventure. I've opened your finalized itinerary in a new tab for you to save or print. Have an amazing trip!",
       "It was my pleasure! I hope you have a fantastic time exploring Ooty. Your PDF itinerary is now ready and opening in a separate tab. Bon voyage!",
@@ -246,7 +246,7 @@ export class Orchestrator {
     // Check for "thank you" after itinerary is finalized - trigger PDF export
     // (This is now handled by the 'closure' intent, but keeping a simpler check here for robustness if needed)
     if ((/thank|thanks|thank you|appreciate/.test(text)) && this.state.context.currentItinerary) {
-      return this.handleClosureIntent(intent);
+      return this.handleClosureIntent();
     }
 
     // Positive confirmation

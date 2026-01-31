@@ -3,7 +3,7 @@
 import React from "react";
 import { Calendar, Clock, Car, Cloud, Sun, CloudRain, CloudFog, Thermometer, IndianRupee, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { DayPlan, TimeBlock } from "@/types";
+import type { DayPlan } from "@/types";
 import { TimeBlockCard } from "./TimeBlockCard";
 import { TravelSegment } from "./TravelSegment";
 
