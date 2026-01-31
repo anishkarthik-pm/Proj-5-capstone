@@ -434,4 +434,25 @@ export function getPOIsByCategory(category: string): POI[] {
   );
 }
 
+/**
+ * Find a specific POI by name (case-insensitive fuzzy match)
+ */
+export function findPOIByName(name: string): POI | undefined {
+  const allPOIs = poiData.pois as POI[];
+  const lowerName = name.toLowerCase();
+
+  // Try exact match first
+  let found = allPOIs.find((poi) => poi.name.toLowerCase() === lowerName);
+
+  // Try partial match if not found
+  if (!found) {
+    found = allPOIs.find((poi) =>
+      poi.name.toLowerCase().includes(lowerName) ||
+      lowerName.includes(poi.name.toLowerCase())
+    );
+  }
+
+  return found;
+}
+
 export default searchPOIs;

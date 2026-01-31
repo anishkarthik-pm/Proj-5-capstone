@@ -37,7 +37,7 @@ export function SuggestionList({
 
   const handleSuggestionClick = (suggestion: SuggestionItem) => {
     // If in swap mode with swapTarget, complete immediately
-    if (mode === "swap" && swapTarget) {
+    if (swapTarget) {
       onSelect(suggestion, swapTarget.dayNumber, swapTarget.timeSlot);
       return;
     }
@@ -197,7 +197,7 @@ export function SuggestionList({
       </div>
 
       <p className="text-xs text-muted-foreground text-center pt-2 border-t">
-        {mode === "swap" 
+        {mode === "swap"
           ? "Click a suggestion to swap, then select day and time slot"
           : "Click a suggestion to add it to your itinerary, or say \"add [name] to Day [number]\""}
       </p>

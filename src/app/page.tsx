@@ -16,13 +16,13 @@ import { useVoiceStore } from "@/lib/stores/voiceStore";
 import { useConversationStore } from "@/lib/stores/conversationStore";
 import { useUIStore } from "@/lib/stores/uiStore";
 import { useDebugStore } from "@/lib/stores/debugStore";
-import type { POI } from "@/types";
+import type { POI, Itinerary } from "@/types";
 // LLM calls go through API routes (not direct imports) for Vercel compatibility
-async function processWithOrchestrator(transcript: string) {
+async function processWithOrchestrator(transcript: string, itinerary?: Itinerary | null) {
   const response = await fetch("/api/orchestrator", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action: "process", transcript }),
+    body: JSON.stringify({ action: "process", transcript, itinerary }),
   });
 
   if (!response.ok) {
@@ -46,7 +46,7 @@ import { initializeRAG } from "@/services/rag";
 
 export default function Home() {
   const { itinerary, setItinerary, setLoading, isLoading } = useTripStore();
-  const { setCurrentResponse, addToHistory, setStatus, isSpeaking } = useVoiceStore();
+  const { setCurrentResponse, addToHistory, setStatus } = useVoiceStore();
   const { addMessage, setProcessing, isProcessing } = useConversationStore();
   const { isDemoMode } = useUIStore();
   const { logInfo, logSuccess, logError } = useDebugStore();
@@ -89,7 +89,7 @@ export default function Home() {
         // Process with orchestrator via API route
         logInfo("system", "Processing with orchestrator...");
         const startTime = Date.now();
-        const result = await processWithOrchestrator(transcript);
+        const result = await processWithOrchestrator(transcript, itinerary);
         const duration = Date.now() - startTime;
 
         const response = result.response;
@@ -104,6 +104,7 @@ export default function Home() {
           content: response.message,
           sources: response.sources,
         });
+        setCurrentResponse(response.message);
         addToHistory(response.message, false);
 
         // Update itinerary if returned
@@ -182,14 +183,15 @@ export default function Home() {
       }
     },
     [
-      isSpeaking,
+      itinerary,
+      setItinerary,
       addMessage,
       addToHistory,
       setProcessing,
       setStatus,
       setLoading,
-      setItinerary,
       setCurrentResponse,
+      setCurrentResponseData,
       logInfo,
       logSuccess,
       logError,
@@ -301,7 +303,15 @@ export default function Home() {
         <div className="hidden md:flex flex-1">
           {/* Itinerary Panel (70%) */}
           <div className="w-[70%] border-r overflow-hidden flex flex-col">
-            <ItineraryView className="flex-1" />
+            <ItineraryView
+              className="flex-1"
+              onEdit={(dayNum, spotNum) => {
+                handleTranscriptComplete(`I want to change spot ${spotNum} on Day ${dayNum}`);
+              }}
+              onExplain={(poiName) => {
+                handleTranscriptComplete(`Explain ${poiName} from my itinerary`);
+              }}
+            />
           </div>
 
           {/* Voice Panel (30%) */}
@@ -349,7 +359,14 @@ export default function Home() {
         <div className="flex md:hidden flex-col flex-1">
           {/* Itinerary */}
           <div className="flex-1 overflow-hidden">
-            <ItineraryView />
+            <ItineraryView
+              onEdit={(dayNum, spotNum) => {
+                handleTranscriptComplete(`I want to change spot ${spotNum} on Day ${dayNum}`);
+              }}
+              onExplain={(poiName) => {
+                handleTranscriptComplete(`Explain ${poiName} from my itinerary`);
+              }}
+            />
           </div>
 
           {/* Suggestions (mobile) */}

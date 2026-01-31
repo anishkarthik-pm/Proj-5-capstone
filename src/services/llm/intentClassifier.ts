@@ -82,6 +82,9 @@ const QUERY_KEYWORDS = [
   "explain this",
   "explain that",
   "explain the",
+  "tell me more",
+  "more info",
+  "info on",
 ];
 
 const CONFIRM_KEYWORDS = [
@@ -112,6 +115,22 @@ const NEGATIVE_KEYWORDS = [
   "never mind",
   "forget",
   "stop",
+];
+
+const CLOSURE_KEYWORDS = [
+  "thank you",
+  "thanks",
+  "that's it",
+  "i'm done",
+  "finished",
+  "nothing else",
+  "that's all",
+  "no more",
+  "thank you very much",
+  "perfect thanks",
+  "all set",
+  "bye",
+  "goodbye",
 ];
 
 // Day number extraction patterns
@@ -158,6 +177,7 @@ export async function classifyIntent(
     edit: calculateScore(normalizedText, EDIT_KEYWORDS),
     query: calculateScore(normalizedText, QUERY_KEYWORDS),
     confirm: calculateScore(normalizedText, CONFIRM_KEYWORDS),
+    closure: calculateScore(normalizedText, CLOSURE_KEYWORDS),
     unclear: 0,
   };
 
@@ -195,14 +215,14 @@ export async function classifyIntent(
   let intentType: IntentType = "unclear";
 
   for (const [type, score] of Object.entries(scores)) {
-    if (score > maxScore && score > 0.3) {
+    if (score > maxScore && score > 0.1) {
       maxScore = score;
       intentType = type as IntentType;
     }
   }
 
   // If no clear intent, mark as unclear
-  if (maxScore < 0.3) {
+  if (maxScore < 0.1) {
     intentType = "unclear";
   }
 
@@ -250,8 +270,8 @@ function calculateScore(text: string, keywords: string[]): number {
     }
   }
 
-  // Normalize by number of keywords
-  return matches > 0 ? score / keywords.length + matches * 0.15 : 0;
+  // Normalize by number of keywords (but give more weight to matches)
+  return matches > 0 ? (score * 0.5) + (matches * 0.2) : 0;
 }
 
 /**

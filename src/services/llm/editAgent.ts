@@ -7,7 +7,7 @@ import type {
   AgentResponse,
   POI,
 } from "@/types";
-import { searchPOIs } from "@/services/mcp/poiSearch";
+import { searchPOIs, findPOIByName } from "@/services/mcp/poiSearch";
 import travelTimesData from "@/data/ooty-travel-times.json";
 import {
   generateEditResponse,
@@ -117,22 +117,22 @@ export class EditAgent {
       // User is selecting from options
       let selectedPOI: POI | undefined;
 
-      // Check for number selection (e.g., "1", "option 1", "first one")
-      const numberMatch = text.match(/(\d+)|first|second|third|fourth|fifth/i);
-      if (numberMatch) {
-        const numberMap: Record<string, number> = { first: 1, second: 2, third: 3, fourth: 4, fifth: 5 };
-        const num = numberMatch[1] ? parseInt(numberMatch[1], 10) : numberMap[numberMatch[0].toLowerCase()];
-        if (num >= 1 && num <= pending.options.length) {
-          selectedPOI = pending.options[num - 1];
+      // 1. Check for name match FIRST (prevents "Day 2" being seen as "Option 2")
+      for (const option of pending.options) {
+        if (text.includes(option.name.toLowerCase())) {
+          selectedPOI = option;
+          break;
         }
       }
 
-      // Check for name match
+      // 2. Check for number selection ONLY if no name match
       if (!selectedPOI) {
-        for (const option of pending.options) {
-          if (text.includes(option.name.toLowerCase())) {
-            selectedPOI = option;
-            break;
+        const numberMatch = text.match(/(\d+)|first|second|third|fourth|fifth/i);
+        if (numberMatch) {
+          const numberMap: Record<string, number> = { first: 1, second: 2, third: 3, fourth: 4, fifth: 5 };
+          const num = numberMatch[1] ? parseInt(numberMatch[1], 10) : numberMap[numberMatch[0].toLowerCase()];
+          if (num >= 1 && num <= pending.options.length) {
+            selectedPOI = pending.options[num - 1];
           }
         }
       }
@@ -253,6 +253,12 @@ export class EditAgent {
       console.error("LLM parsing failed, using fallback:", error);
       // Fallback to basic parsing
       parsedIntent = this.fallbackParseIntent(text, itinerary);
+    }
+
+    // If the intent is very specific (has action and day/slot), we should probably 
+    // clear any pending state even if the orchestrator didn't catch it
+    if (parsedIntent.action !== "unknown" && parsedIntent.dayNumber !== undefined) {
+      this.pendingModification = null;
     }
 
     // Determine target day
@@ -398,20 +404,8 @@ export class EditAgent {
    * Find block by spot number (1-indexed, counting all blocks in order)
    */
   private findBlockBySpotNumber(day: DayPlan, spotNumber: number): TimeBlock | undefined {
-    // Get all blocks in the same order as displayed (tourist spots first, then restaurants)
-    const isFoodSpot = (block: TimeBlock) =>
-      block.poi.category.some(c =>
-        c.toLowerCase().includes("food") ||
-        c.toLowerCase().includes("restaurant") ||
-        c.toLowerCase().includes("cafe") ||
-        c.toLowerCase().includes("dining")
-      );
-
-    const touristSpots = day.blocks.filter(b => !isFoodSpot(b));
-    const restaurants = day.blocks.filter(b => isFoodSpot(b));
-    const orderedBlocks = [...touristSpots, ...restaurants];
-
-    return orderedBlocks[spotNumber - 1]; // Convert to 0-indexed
+    // UI is now purely chronological, so spotNumber corresponds directly to array index
+    return day.blocks[spotNumber - 1]; // Convert to 0-indexed
   }
 
   /**
@@ -484,10 +478,27 @@ export class EditAgent {
       .flatMap((d) => d.blocks)
       .map((b) => b.poi.id);
 
-    // Search for a POI matching the request
+    // Check if a specific POI name is mentioned
+    // Extract "with [name]" or "add [name]"
+    const nameMatch = text.match(/(?:with|add)\s+([^,.(]+)/i);
+    if (nameMatch) {
+      const poiName = nameMatch[1].trim();
+      const directPOI = findPOIByName(poiName);
+      if (directPOI) {
+        return {
+          type: "add",
+          dayNumber,
+          timeSlot,
+          newPOI: directPOI,
+          description: `Add ${directPOI.name} to Day ${dayNumber}${timeSlot ? ` (${timeSlot})` : ""}`,
+        };
+      }
+    }
+
+    // Default to search
     const searchTerms: string[] = [];
 
-    if (/tea|garden|factory/.test(text)) searchTerms.push("tea");
+    if (/ tea | garden | factory /.test(text)) searchTerms.push("tea");
     if (/restaurant|food|eat|lunch|dinner|breakfast|cafe|snack/.test(text)) searchTerms.push("food");
     if (/church|museum|heritage/.test(text)) searchTerms.push("culture");
     if (/view|scenic|peak|point|viewpoint/.test(text)) searchTerms.push("nature");
@@ -617,7 +628,24 @@ export class EditAgent {
 
     if (!blockToReplace) return null;
 
-    // Find a replacement POI
+    // Check if a specific POI name is mentioned for replacement
+    const nameMatch = text.match(/(?:with|to)\s+([^,.(]+)/i);
+    if (nameMatch) {
+      const poiName = nameMatch[1].trim();
+      const directPOI = findPOIByName(poiName);
+      if (directPOI) {
+        return {
+          type: "replace",
+          dayNumber,
+          blockId: blockToReplace.id,
+          timeSlot: blockToReplace.timeSlot,
+          newPOI: directPOI,
+          description: `Replace ${blockToReplace.poi.name} with ${directPOI.name}`,
+        };
+      }
+    }
+
+    // Default to search
     const existingPOIIds = itinerary.days
       .flatMap((d) => d.blocks)
       .map((b) => b.poi.id);
@@ -815,6 +843,14 @@ export class EditAgent {
               timeSlot: operation.timeSlot || "afternoon",
               dayTheme: day.theme,
             });
+
+            // Add contextual note if it's a replacement
+            if (operation.blockId) {
+              const oldBlock = day.blocks.find(b => b.id === operation.blockId);
+              if (oldBlock) {
+                poiReasoning += ` This is a great alternative to ${oldBlock.poi.name} that fits perfectly into your ${operation.timeSlot || "afternoon"} schedule.`;
+              }
+            }
           } catch {
             // Use fallback
           }
@@ -1097,8 +1133,8 @@ export class EditAgent {
           const day2Idx = operation.targetDayNumber - 1;
 
           if (day1Idx >= 0 && day2Idx >= 0 &&
-              day1Idx < updatedItinerary.days.length &&
-              day2Idx < updatedItinerary.days.length) {
+            day1Idx < updatedItinerary.days.length &&
+            day2Idx < updatedItinerary.days.length) {
             // Swap the days' blocks and themes
             const day1 = updatedItinerary.days[day1Idx];
             const day2 = updatedItinerary.days[day2Idx];

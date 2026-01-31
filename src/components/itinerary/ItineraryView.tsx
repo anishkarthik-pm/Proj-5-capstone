@@ -12,9 +12,11 @@ import { VEHICLE_RATES } from "@/services/mcp/travelCostCalculator";
 
 interface ItineraryViewProps {
   className?: string;
+  onEdit?: (dayNumber: number, spotNumber: number) => void;
+  onExplain?: (poiName: string) => void;
 }
 
-export function ItineraryView({ className }: ItineraryViewProps) {
+export function ItineraryView({ className, onEdit, onExplain }: ItineraryViewProps) {
   const { itinerary, isLoading } = useTripStore();
   const { activeDay, setActiveDay } = useUIStore();
   const [showSources, setShowSources] = useState(false);
@@ -68,8 +70,8 @@ export function ItineraryView({ className }: ItineraryViewProps) {
 
   // Get arrival icon
   const ArrivalIcon = preferences.arrivalPoint === "airport" ? Plane :
-                      preferences.arrivalPoint === "railway" ? Train :
-                      preferences.arrivalPoint === "bus" ? Bus : Car;
+    preferences.arrivalPoint === "railway" ? Train :
+      preferences.arrivalPoint === "bus" ? Bus : Car;
 
   return (
     <div className={cn("flex flex-col h-full", className)}>
@@ -232,7 +234,11 @@ export function ItineraryView({ className }: ItineraryViewProps) {
               activeDay === day.dayNumber ? "opacity-100" : "hidden"
             )}
           >
-            <DayCard day={day} />
+            <DayCard
+              day={day}
+              onEdit={onEdit}
+              onExplain={onExplain}
+            />
           </div>
         ))}
       </div>

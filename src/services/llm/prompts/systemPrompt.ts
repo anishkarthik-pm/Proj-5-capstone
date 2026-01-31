@@ -97,9 +97,11 @@ Always:
 - Include source citations
 - Keep answers concise but complete`;
 
-export default {
+const systemPrompts = {
   SYSTEM_PROMPT,
   CLARIFYING_QUESTIONS_PROMPT,
   EDIT_PROMPT,
   QUERY_PROMPT,
 };
+
+export default systemPrompts;

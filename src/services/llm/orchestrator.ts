@@ -44,25 +44,45 @@ export class Orchestrator {
     // Add user message to context
     this.addMessage("user", transcript);
 
-    // Check if we're waiting for a clarification answer
+    // 1. Classify the intent first to see if it's a "fresh" command
+    const intent = await classifyIntent(
+      transcript,
+      this.state.context.currentItinerary !== null
+    );
+
+    // 2. Identify if this is a Query (Info button) or a definitive Edit command
+    const isQuery = intent.type === "query" || /why|what|how|explain|tell me|details/i.test(transcript);
+    const isDefinitiveEdit = intent.type === "edit" && (intent.action !== undefined || intent.dayNumber !== undefined);
+
+    // 3. If it's a fresh Query or definitive Edit, we MUST clear the pending edit state
+    // This fixed the bug where clicking "Info" would trigger "I didn't catch which option you want"
+    if (isQuery || isDefinitiveEdit) {
+      if (editAgent.hasPendingModification()) {
+        console.log("Forcibly clearing pending edit state due to new definitive intent:", intent.type);
+        editAgent.clearPending();
+      }
+    }
+
+    // 4. Check if we're waiting for a clarification answer for planning
     if (
       this.state.isWaitingForClarification &&
-      this.state.lastIntent?.type === "plan"
+      this.state.lastIntent?.type === "plan" &&
+      !isQuery && !isDefinitiveEdit
     ) {
       return this.handleClarificationAnswer(transcript);
     }
 
-    // Check if editAgent has a pending modification (two-step flow)
-    // This takes priority over intent classification
+    // 5. Check if editAgent has a pending modification (two-step flow)
+    // Only proceed if it's not a fresh Query or definitive Edit that already cleared it
     if (editAgent.hasPendingModification() && this.state.context.currentItinerary) {
-      const intent: VoiceIntent = {
+      const editIntent: VoiceIntent = {
         type: "edit",
         rawText: transcript,
         confidence: 1.0,
       };
-      this.state.lastIntent = intent;
-      const response = await this.handleEditIntent(intent);
-      this.addMessage("assistant", response.message, intent, response.sources);
+      this.state.lastIntent = editIntent;
+      const response = await this.handleEditIntent(editIntent);
+      this.addMessage("assistant", response.message, editIntent, response.sources);
 
       // Update itinerary if returned from edit operation
       const editData = response.data as { itinerary?: Itinerary } | undefined;
@@ -73,12 +93,7 @@ export class Orchestrator {
       return response;
     }
 
-    // Classify the intent
-    const intent = await classifyIntent(
-      transcript,
-      this.state.context.currentItinerary !== null
-    );
-
+    // Continue with the classified intent
     this.state.lastIntent = intent;
 
     // Route to appropriate agent
@@ -101,9 +116,22 @@ export class Orchestrator {
         response = await this.handleConfirmation(intent);
         break;
 
+      case "closure":
+        response = await this.handleClosureIntent(intent);
+        break;
+
       case "unclear":
       default:
-        response = await this.handleUnclearIntent(transcript);
+        // Double check if query keywords are present even if score was low
+        if (isQuery) {
+          response = await this.handleQueryIntent({
+            type: "query",
+            rawText: transcript,
+            confidence: 0.5
+          });
+        } else {
+          response = await this.handleUnclearIntent(transcript);
+        }
         break;
     }
 
@@ -175,6 +203,29 @@ export class Orchestrator {
   }
 
   /**
+   * Handle closure intent (e.g., "thank you", "that's it")
+   */
+  private async handleClosureIntent(intent: VoiceIntent): Promise<AgentResponse> {
+    const messages = [
+      "You're very welcome! I'm glad I could help you plan your Ooty adventure. I've opened your finalized itinerary in a new tab for you to save or print. Have an amazing trip!",
+      "It was my pleasure! I hope you have a fantastic time exploring Ooty. Your PDF itinerary is now ready and opening in a separate tab. Bon voyage!",
+      "Happy to help! Ooty is a beautiful place, and I'm sure you'll have a wonderful time. I've generated your PDF itinerary for you. Enjoy your trip!",
+    ];
+
+    const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+
+    return {
+      success: true,
+      message: randomMessage,
+      shouldSpeak: true,
+      data: {
+        shouldExportPdf: true,
+        itinerary: this.state.context.currentItinerary || undefined,
+      },
+    };
+  }
+
+  /**
    * Handle confirmation
    */
   private async handleConfirmation(intent: VoiceIntent): Promise<AgentResponse> {
@@ -193,16 +244,9 @@ export class Orchestrator {
     }
 
     // Check for "thank you" after itinerary is finalized - trigger PDF export
+    // (This is now handled by the 'closure' intent, but keeping a simpler check here for robustness if needed)
     if ((/thank|thanks|thank you|appreciate/.test(text)) && this.state.context.currentItinerary) {
-      return {
-        success: true,
-        message: "You're welcome! Your itinerary PDF is being prepared.",
-        shouldSpeak: true,
-        data: {
-          shouldExportPdf: true,
-          itinerary: this.state.context.currentItinerary,
-        },
-      };
+      return this.handleClosureIntent(intent);
     }
 
     // Positive confirmation

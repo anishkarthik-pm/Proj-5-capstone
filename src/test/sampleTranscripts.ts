@@ -122,8 +122,10 @@ export const intentTestCases = [
   },
 ];
 
-export default {
+const sampleTranscripts = {
   sampleInputs,
   demoSequence,
   intentTestCases,
 };
+
+export default sampleTranscripts;

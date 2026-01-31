@@ -51,7 +51,7 @@ export async function GET() {
       // Try with available models in order of preference
       const fallbackModels = ["gemini-2.5-flash-lite", "gemini-3-flash", "gemini-2.5-flash"];
       let lastError = errorMessage;
-      
+
       for (const fallbackModel of fallbackModels) {
         try {
           const client = new GoogleGenerativeAI(apiKey);
@@ -76,13 +76,14 @@ export async function GET() {
           continue; // Try next fallback model
         }
       }
-      
+
       // All fallbacks failed, return original error
       return NextResponse.json({
         valid: false,
-        message: `Model '${model}' not found. Available models: gemini-2.5-flash-lite, gemini-3-flash, gemini-2.5-flash`,
+        message: `Model '${model}' not found. Fallback models also failed.`,
         model,
-        error: errorMessage.slice(0, 100),
+        error: errorMessage.slice(0, 50),
+        lastError: lastError.slice(0, 50),
       });
     }
 

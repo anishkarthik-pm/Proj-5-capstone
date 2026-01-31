@@ -263,11 +263,12 @@ export async function generateJSON<T>(
   }
 }
 
-// Export default instance methods
-export default {
+const geminiProvider = {
   initialize: initializeGemini,
   isAvailable: isGeminiAvailable,
   generate: generateCompletion,
   generateStream: generateStreamingCompletion,
   generateJSON,
 };
+
+export default geminiProvider;

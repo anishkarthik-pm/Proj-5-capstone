@@ -13,9 +13,9 @@ import { TravelSegment } from "./TravelSegment";
 function isFoodSpot(block: TimeBlock): boolean {
   return block.poi.category.some(
     (c) => c.toLowerCase().includes("food") ||
-           c.toLowerCase().includes("restaurant") ||
-           c.toLowerCase().includes("cafe") ||
-           c.toLowerCase().includes("dining")
+      c.toLowerCase().includes("restaurant") ||
+      c.toLowerCase().includes("cafe") ||
+      c.toLowerCase().includes("dining")
   );
 }
 
@@ -40,9 +40,11 @@ function WeatherIcon({ condition }: { condition?: string }) {
 interface DayCardProps {
   day: DayPlan;
   className?: string;
+  onEdit?: (dayNumber: number, spotNumber: number) => void;
+  onExplain?: (poiName: string) => void;
 }
 
-export function DayCard({ day, className }: DayCardProps) {
+export function DayCard({ day, className, onEdit, onExplain }: DayCardProps) {
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString("en-IN", {
       weekday: "long",
@@ -136,53 +138,35 @@ export function DayCard({ day, className }: DayCardProps) {
         </div>
       )}
 
-      {/* Separate tourist spots and restaurants with numbering */}
-      {(() => {
-        const touristSpots = day.blocks.filter((b) => !isFoodSpot(b));
-        const restaurants = day.blocks.filter((b) => isFoodSpot(b));
-        let spotCounter = 1; // Global counter for all spots in the day
+      {/* Chronological Activities List */}
+      <div className="space-y-2">
+        {day.blocks.length > 0 ? (
+          day.blocks.map((block, index) => {
+            const currentSpotNumber = index + 1;
+            const isFood = block.poi.category.some(
+              (c) => c.toLowerCase().includes("food") ||
+                c.toLowerCase().includes("restaurant") ||
+                c.toLowerCase().includes("cafe") ||
+                c.toLowerCase().includes("dining")
+            );
 
-        return (
-          <>
-            {/* Tourist Spots Section */}
-            {touristSpots.length > 0 && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm font-medium text-primary border-b pb-2">
-                  <Mountain className="w-4 h-4" />
-                  <span>Tourist Spots ({touristSpots.length})</span>
-                </div>
-                {touristSpots.map((block, index) => {
-                  const currentSpotNumber = spotCounter++;
-                  return (
-                    <React.Fragment key={block.id}>
-                      {index > 0 && block.travelTimeFromPrev > 0 && (
-                        <TravelSegment travelTime={block.travelTimeFromPrev} />
-                      )}
-                      <TimeBlockCard block={block} spotNumber={currentSpotNumber} />
-                    </React.Fragment>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Restaurants Section */}
-            {restaurants.length > 0 && (
-              <div className="space-y-2 mt-4">
-                <div className="flex items-center gap-2 text-sm font-medium text-amber-600 border-b border-amber-200 pb-2">
-                  <UtensilsCrossed className="w-4 h-4" />
-                  <span>Restaurants & Cafes ({restaurants.length})</span>
-                </div>
-                {restaurants.map((block) => {
-                  const currentSpotNumber = spotCounter++;
-                  return (
-                    <TimeBlockCard key={block.id} block={block} isFood spotNumber={currentSpotNumber} />
-                  );
-                })}
-              </div>
-            )}
-          </>
-        );
-      })()}
+            return (
+              <React.Fragment key={block.id}>
+                {index > 0 && block.travelTimeFromPrev > 0 && (
+                  <TravelSegment travelTime={block.travelTimeFromPrev} />
+                )}
+                <TimeBlockCard
+                  block={block}
+                  isFood={isFood}
+                  spotNumber={currentSpotNumber}
+                  onEdit={() => onEdit?.(day.dayNumber, currentSpotNumber)}
+                  onExplain={onExplain}
+                />
+              </React.Fragment>
+            );
+          })
+        ) : null}
+      </div>
 
       {/* Empty State */}
       {day.blocks.length === 0 && (

@@ -30,6 +30,11 @@ export async function POST(request: NextRequest) {
           );
         }
 
+        // Sync itinerary if provided to handle serverless state loss
+        if (itinerary) {
+          orchestrator.setItinerary(itinerary);
+        }
+
         const response = await orchestrator.handleVoiceInput(transcript);
 
         return NextResponse.json({

@@ -95,8 +95,8 @@ export class QueryAgent {
     if (/what about|about the|the .+ garden|the .+ lake|the .+ museum|the .+ point|the .+ falls|the .+ peak|the .+ dam/.test(text)) {
       return true;
     }
-    // Catch "explain [spot name]" patterns
-    if (/^explain\s+(?:this\s+)?(?:spot|place|location|attraction)/i.test(text) || /explain\s+[A-Z][a-z]+/i.test(text)) {
+    // Catch "explain [spot name]" patterns or "explain spot [number]"
+    if (/^explain\s+(?:this\s+)?(?:spot|place|location|attraction|restaurant)/i.test(text) || /explain\s+[A-Z][a-z]+/i.test(text) || /explain\s+spot\s+\d+/i.test(text)) {
       return true;
     }
     return false;
@@ -165,6 +165,7 @@ Tips: ${poi.tips.join(". ")}`;
       ragContext: poiContext,
       currentItinerary,
       questionType: "why",
+      instructions: "Explain the reasoning behind the choice, connecting it to user preferences and the place's qualities.",
     });
 
     return {
@@ -211,6 +212,7 @@ Tips: ${poi.tips.join(". ")}`;
       ragContext,
       currentItinerary: context.currentItinerary,
       questionType: "what_if",
+      instructions: "Address their hypothetical scenario with practical advice and alternatives if needed.",
     });
 
     return {
@@ -240,11 +242,16 @@ Tips: ${poi.tips.join(". ")}`;
     if (currentItinerary) {
       for (const day of currentItinerary.days) {
         for (const block of day.blocks) {
+          // More flexible matching - partial name match or spot number match
           const poiNameLower = block.poi.name.toLowerCase();
-          // More flexible matching - partial name match
           const poiWords = poiNameLower.split(/\s+/);
           const textWords = text.split(/\s+/);
-          const hasMatch = poiWords.some(pw => textWords.some(tw =>
+
+          // Check for spot number match (e.g., "explain spot 2")
+          const spotNumberMatch = text.match(/spot\s*(\d+)/i);
+          const isSpotNumberMatch = spotNumberMatch && parseInt(spotNumberMatch[1], 10) === day.blocks.indexOf(block) + 1;
+
+          const hasMatch = isSpotNumberMatch || poiWords.some(pw => textWords.some(tw =>
             tw.length > 3 && (pw.includes(tw) || tw.includes(pw))
           )) || text.includes(poiNameLower);
 
@@ -293,17 +300,18 @@ ${block.reasoning ? `WHY I PICKED THIS: ${block.reasoning}` : ""}`;
       sources = ragResult.sources;
     }
 
-    // Build prompt with context about what's shown on screen
-    const promptContext = foundInItinerary
-      ? `This place is shown on the user's screen in their itinerary. Explain what's displayed and why it's a good choice.`
-      : `This place may not be in their current itinerary. Provide general information.`;
+    // Build specific instructions based on whether POI was found
+    const instructions = foundInItinerary
+      ? "This place is in the user's itinerary. Explain briefly what's displayed and why it's a good choice for their current plan."
+      : "This place may not be in their current itinerary. Provide brief, general information about it.";
 
     // Use LLM to generate natural response
     const message = await generateQueryResponse({
       userQuestion: intent.rawText,
-      ragContext: `${promptContext}\n\n${infoContext}`,
+      ragContext: infoContext,
       currentItinerary,
       questionType: "info",
+      instructions,
     });
 
     return {
@@ -369,6 +377,7 @@ Itinerary feasibility:
       ragContext: feasibilityContext,
       currentItinerary,
       questionType: "feasibility",
+      instructions: "Assess whether their idea is practical and provide honest, helpful guidance.",
     });
 
     return {
@@ -394,6 +403,7 @@ Itinerary feasibility:
       ragContext: ragResult.context,
       currentItinerary: context.currentItinerary,
       questionType: "general",
+      instructions: "Answer their question directly and helpfully based on the available information.",
     });
 
     return {

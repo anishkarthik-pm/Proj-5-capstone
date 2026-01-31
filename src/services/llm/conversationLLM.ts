@@ -126,23 +126,23 @@ export async function generatePOIReasoning(params: {
 }): Promise<string> {
   const { poi, userInterests, timeSlot, dayTheme } = params;
 
-  const prompt = `You're a local Ooty travel guide. Explain briefly (1-2 sentences) why ${poi.name} is perfect for this traveler.
+  const prompt = `Explain briefly why ${poi.name} is a good choice for this visitor.
+  
+Keep it very short (1-2 sentences). Focus on the "why".
 
 Place: ${poi.name}
 Categories: ${poi.category.join(", ")}
-Description: ${poi.description}
-Best time: ${poi.best_time}
-Scheduled for: ${timeSlot}
+Details: ${poi.description}
+Scheduled: ${timeSlot}
 Traveler interests: ${userInterests.join(", ")}
-${dayTheme ? `Day theme: ${dayTheme}` : ""}
 
-Give a personal, specific reason. Mention something unique about the place. Be enthusiastic but not over the top. No emojis.`;
+Response must be natural and conversational. No emojis.`;
 
   try {
     const result = await generateCompletion([{ role: "user", content: prompt }]);
-    return result?.content || `${poi.name} matches your interest in ${userInterests[0] || "exploring Ooty"}.`;
+    return result?.content || `${poi.name} is a great match for your interest in ${userInterests[0] || "exploring Ooty"}.`;
   } catch {
-    return `${poi.name} matches your interest in ${userInterests[0] || "exploring Ooty"}.`;
+    return `${poi.name} fits well with your interest in ${userInterests[0] || "exploring Ooty"}.`;
   }
 }
 
@@ -282,8 +282,8 @@ export async function generateClarifyingQuestion(params: {
   } else if (questionType === "needsPickupDrop" && previousAnswers.arrivalPoint) {
     const arrival = previousAnswers.arrivalPoint as string;
     const arrivalText = arrival === "airport" ? "Coimbatore airport" :
-                        arrival === "railway" ? "the railway station" :
-                        arrival === "bus" ? "the bus stand" : "your own vehicle";
+      arrival === "railway" ? "the railway station" :
+        arrival === "bus" ? "the bus stand" : "your own vehicle";
     contextPrefix = `Arriving via ${arrivalText}. `;
   } else if (questionType === "hotelCategory" && previousAnswers.groupSize) {
     const size = previousAnswers.groupSize as number;
@@ -340,8 +340,8 @@ export async function generateConfirmationMessage(params: {
     let transportNote = `Transport: ${vehicle.charAt(0).toUpperCase() + vehicle.slice(1)} for local travel`;
     if (needsPickup && arrivalPoint) {
       const arrivalText = arrivalPoint === "airport" ? "Coimbatore airport" :
-                          arrivalPoint === "railway" ? "railway station" :
-                          arrivalPoint === "bus" ? "bus stand" : "";
+        arrivalPoint === "railway" ? "railway station" :
+          arrivalPoint === "bus" ? "bus stand" : "";
       if (arrivalText) {
         transportNote += `, pickup from ${arrivalText}`;
       }
@@ -546,32 +546,25 @@ Trip Details:
 
   // Check if user is asking about a specific place
   const isAskingAboutPlace = /explain|tell.*about|talk.*about|what.*about|describe|info.*about|more.*about|details.*about/i.test(userText);
-  const placeInQuestion = currentItinerary ? 
+  const placeInQuestion = currentItinerary ?
     currentItinerary.days.flatMap(d => d.blocks.map(b => b.poi.name))
       .find(name => userText.toLowerCase().includes(name.toLowerCase().split(/\s+/)[0])) : null;
 
-  const prompt = `You are a friendly Ooty travel planning assistant. The user said something you need to respond to helpfully.
+  const prompt = `You are a friendly Ooty travel assistant. 
 
 ${screenContext}
 
 ${recentHistory ? `RECENT CONVERSATION:\n${recentHistory}\n` : ""}
 
 USER JUST SAID: "${userText}"
-${isAskingAboutPlace && placeInQuestion ? `\nNOTE: User is asking about "${placeInQuestion}" - provide specific information about this place.` : ""}
+${isAskingAboutPlace && placeInQuestion ? `\nNOTE: User is specifically asking about "${placeInQuestion}".` : ""}
 
-Generate a helpful response that:
-${isAskingAboutPlace && placeInQuestion ? 
-  `1. Provide specific information about ${placeInQuestion} from their itinerary
-2. Explain what makes it special, what to expect, and why it's in their plan
-3. Be informative and detailed (3-4 sentences)` :
-  `1. If they have an itinerary: Briefly acknowledge their request and guide them
-2. If no itinerary: Guide them on how to start planning
-3. Answer any question they might have based on context
-4. Be specific and helpful`}
+Generate a short, helpful response (1-2 sentences). 
 
-${currentItinerary && !isAskingAboutPlace ? `Their itinerary has ${currentItinerary.days.length} days.` : ""}
+If they are asking about ${isAskingAboutPlace && placeInQuestion ? placeInQuestion : "a place"}:
+Explain what's shown on their screen in the itinerary and why it's a good choice for them. Keep it brief.
 
-Be conversational, helpful, and specific. ${isAskingAboutPlace ? "Provide detailed information." : "Keep response concise (2-3 sentences)."} No emojis.`;
+No emojis.`;
 
   try {
     const result = await generateCompletion([{ role: "user", content: prompt }]);
@@ -599,8 +592,9 @@ export async function generateQueryResponse(params: {
   ragContext: string | null;
   currentItinerary: Itinerary | null;
   questionType: "why" | "what_if" | "info" | "feasibility" | "general";
+  instructions: string;
 }): Promise<string> {
-  const { userQuestion, ragContext, currentItinerary, questionType } = params;
+  const { userQuestion, ragContext, currentItinerary, questionType, instructions } = params;
 
   // Build itinerary context
   let itineraryContext = "";
@@ -611,30 +605,23 @@ export async function generateQueryResponse(params: {
     itineraryContext = `\nPlaces in their itinerary: ${places.join(", ")}`;
   }
 
-  const typeInstructions: Record<string, string> = {
-    why: "Explain the reasoning behind the choice, connecting it to user preferences and the place's qualities.",
-    what_if: "Address their hypothetical scenario with practical advice and alternatives if needed.",
-    info: "Provide specific, useful information about the place or topic they're asking about.",
-    feasibility: "Assess whether their idea is practical and provide honest, helpful guidance.",
-    general: "Answer their question directly and helpfully based on the available information.",
-  };
+  const prompt = `You are a knowledgeable Ooty travel guide. 
 
-  const prompt = `You are a knowledgeable Ooty travel guide answering a visitor's question.
+${instructions}
 
 USER'S QUESTION: "${userQuestion}"
-QUESTION TYPE: ${questionType}
 ${ragContext ? `\nRELEVANT INFORMATION:\n${ragContext}` : ""}
 ${itineraryContext}
 
-Instructions: ${typeInstructions[questionType] || typeInstructions.general}
+Instructions: Answer the question briefly (1-2 sentences). Be direct and natural. DO NOT repeat the "RELEVANT INFORMATION" or "Instructions" headers in your response.
 
-Generate a helpful, natural response. Be specific and informative. If you don't have enough information, acknowledge that but still try to be helpful. Keep it to 2-4 sentences. No emojis.`;
+No emojis.`;
 
   try {
     const result = await generateCompletion([{ role: "user", content: prompt }]);
-    return result?.content || ragContext || "I don't have specific information about that. Could you tell me more about what you'd like to know?";
+    return result?.content || "I don't have that specific information right now. Is there something else I can help you with?";
   } catch {
-    return ragContext || "I'm having trouble accessing my knowledge base. Could you try asking in a different way?";
+    return "I'm having trouble accessing my knowledge base. Would you like to check something else?";
   }
 }
 

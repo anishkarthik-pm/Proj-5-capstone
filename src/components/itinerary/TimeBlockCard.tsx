@@ -11,6 +11,7 @@ import {
   Sun,
   Sunset,
   Moon,
+  Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -21,11 +22,12 @@ interface TimeBlockCardProps {
   block: TimeBlock;
   className?: string;
   onEdit?: () => void;
+  onExplain?: (poiName: string) => void;
   isFood?: boolean; // Different styling for food/restaurant spots
   spotNumber?: number; // Spot number for easy reference (1, 2, 3...)
 }
 
-export function TimeBlockCard({ block, className, onEdit, isFood, spotNumber }: TimeBlockCardProps) {
+export function TimeBlockCard({ block, className, onEdit, onExplain, isFood, spotNumber }: TimeBlockCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const { highlightedBlocks } = useUIStore();
   const isHighlighted = highlightedBlocks.includes(block.id);
@@ -138,10 +140,22 @@ export function TimeBlockCard({ block, className, onEdit, isFood, spotNumber }: 
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8"
+                className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
                 onClick={onEdit}
+                title="Change this spot"
               >
                 <Edit2 className="w-4 h-4" />
+              </Button>
+            )}
+            {onExplain && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-blue-500 hover:text-blue-600 hover:bg-blue-50"
+                onClick={() => onExplain(poi.name)}
+                title="Ask AI to explain this place"
+              >
+                <Info className="w-4 h-4" />
               </Button>
             )}
             <Button

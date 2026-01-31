@@ -116,7 +116,7 @@ export interface Itinerary {
 // Voice Command Intent
 // ============================================
 
-export type IntentType = "plan" | "edit" | "query" | "confirm" | "unclear";
+export type IntentType = "plan" | "edit" | "query" | "confirm" | "unclear" | "closure";
 
 export interface VoiceIntent {
   type: IntentType;

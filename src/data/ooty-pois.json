@@ -5,8 +5,15 @@
     {
       "id": "poi-doddabetta",
       "name": "Doddabetta Peak",
-      "category": ["nature", "scenic", "trekking"],
-      "coordinates": { "lat": 11.4025, "lng": 76.7356 },
+      "category": [
+        "nature",
+        "scenic",
+        "trekking"
+      ],
+      "coordinates": {
+        "lat": 11.4025,
+        "lng": 76.7356
+      },
       "estimated_duration_mins": 90,
       "best_time": "morning",
       "crowd_level": "high",
@@ -24,8 +31,16 @@
     {
       "id": "poi-ooty-lake",
       "name": "Ooty Lake",
-      "category": ["nature", "scenic", "boating", "relaxation"],
-      "coordinates": { "lat": 11.4037, "lng": 76.6932 },
+      "category": [
+        "nature",
+        "scenic",
+        "boating",
+        "relaxation"
+      ],
+      "coordinates": {
+        "lat": 11.4037,
+        "lng": 76.6932
+      },
       "estimated_duration_mins": 60,
       "best_time": "any",
       "crowd_level": "high",
@@ -43,8 +58,15 @@
     {
       "id": "poi-pykara-falls",
       "name": "Pykara Falls",
-      "category": ["nature", "scenic", "waterfall"],
-      "coordinates": { "lat": 11.4667, "lng": 76.5833 },
+      "category": [
+        "nature",
+        "scenic",
+        "waterfall"
+      ],
+      "coordinates": {
+        "lat": 11.4667,
+        "lng": 76.5833
+      },
       "estimated_duration_mins": 120,
       "best_time": "afternoon",
       "crowd_level": "medium",
@@ -62,8 +84,16 @@
     {
       "id": "poi-avalanche-lake",
       "name": "Avalanche Lake",
-      "category": ["nature", "scenic", "trekking", "adventure"],
-      "coordinates": { "lat": 11.3125, "lng": 76.5667 },
+      "category": [
+        "nature",
+        "scenic",
+        "trekking",
+        "adventure"
+      ],
+      "coordinates": {
+        "lat": 11.3125,
+        "lng": 76.5667
+      },
       "estimated_duration_mins": 180,
       "best_time": "morning",
       "crowd_level": "low",
@@ -81,8 +111,15 @@
     {
       "id": "poi-pine-forest",
       "name": "Pine Forest",
-      "category": ["nature", "scenic", "photography"],
-      "coordinates": { "lat": 11.4333, "lng": 76.6500 },
+      "category": [
+        "nature",
+        "scenic",
+        "photography"
+      ],
+      "coordinates": {
+        "lat": 11.4333,
+        "lng": 76.6500
+      },
       "estimated_duration_mins": 45,
       "best_time": "any",
       "crowd_level": "medium",
@@ -100,8 +137,15 @@
     {
       "id": "poi-emerald-lake",
       "name": "Emerald Lake",
-      "category": ["nature", "scenic", "offbeat"],
-      "coordinates": { "lat": 11.3833, "lng": 76.5167 },
+      "category": [
+        "nature",
+        "scenic",
+        "offbeat"
+      ],
+      "coordinates": {
+        "lat": 11.3833,
+        "lng": 76.5167
+      },
       "estimated_duration_mins": 150,
       "best_time": "morning",
       "crowd_level": "low",
@@ -119,8 +163,15 @@
     {
       "id": "poi-botanical-gardens",
       "name": "Government Botanical Gardens",
-      "category": ["nature", "gardens", "heritage"],
-      "coordinates": { "lat": 11.4146, "lng": 76.6979 },
+      "category": [
+        "nature",
+        "gardens",
+        "heritage"
+      ],
+      "coordinates": {
+        "lat": 11.4146,
+        "lng": 76.6979
+      },
       "estimated_duration_mins": 120,
       "best_time": "morning",
       "crowd_level": "high",
@@ -138,8 +189,15 @@
     {
       "id": "poi-rose-garden",
       "name": "Rose Garden",
-      "category": ["nature", "gardens", "photography"],
-      "coordinates": { "lat": 11.4083, "lng": 76.6833 },
+      "category": [
+        "nature",
+        "gardens",
+        "photography"
+      ],
+      "coordinates": {
+        "lat": 11.4083,
+        "lng": 76.6833
+      },
       "estimated_duration_mins": 60,
       "best_time": "morning",
       "crowd_level": "medium",
@@ -157,8 +215,15 @@
     {
       "id": "poi-tea-factory",
       "name": "Tea Factory & Tea Gardens",
-      "category": ["culture", "food", "shopping"],
-      "coordinates": { "lat": 11.4000, "lng": 76.7333 },
+      "category": [
+        "culture",
+        "food",
+        "shopping"
+      ],
+      "coordinates": {
+        "lat": 11.4000,
+        "lng": 76.7333
+      },
       "estimated_duration_mins": 90,
       "best_time": "any",
       "crowd_level": "medium",
@@ -176,8 +241,15 @@
     {
       "id": "poi-sims-park",
       "name": "Sim's Park",
-      "category": ["nature", "gardens", "relaxation"],
-      "coordinates": { "lat": 11.3533, "lng": 76.7967 },
+      "category": [
+        "nature",
+        "gardens",
+        "relaxation"
+      ],
+      "coordinates": {
+        "lat": 11.3533,
+        "lng": 76.7967
+      },
       "estimated_duration_mins": 90,
       "best_time": "afternoon",
       "crowd_level": "low",
@@ -195,8 +267,15 @@
     {
       "id": "poi-st-stephens-church",
       "name": "St. Stephen's Church",
-      "category": ["culture", "heritage", "architecture"],
-      "coordinates": { "lat": 11.4103, "lng": 76.6939 },
+      "category": [
+        "culture",
+        "heritage",
+        "architecture"
+      ],
+      "coordinates": {
+        "lat": 11.4103,
+        "lng": 76.6939
+      },
       "estimated_duration_mins": 30,
       "best_time": "any",
       "crowd_level": "low",
@@ -214,8 +293,15 @@
     {
       "id": "poi-tribal-museum",
       "name": "Tribal Research Centre Museum",
-      "category": ["culture", "heritage", "museum"],
-      "coordinates": { "lat": 11.4167, "lng": 76.7000 },
+      "category": [
+        "culture",
+        "heritage",
+        "museum"
+      ],
+      "coordinates": {
+        "lat": 11.4167,
+        "lng": 76.7000
+      },
       "estimated_duration_mins": 60,
       "best_time": "any",
       "crowd_level": "low",
@@ -233,8 +319,15 @@
     {
       "id": "poi-stone-house",
       "name": "Stone House (John Sullivan's Bungalow)",
-      "category": ["culture", "heritage", "architecture"],
-      "coordinates": { "lat": 11.4117, "lng": 76.6950 },
+      "category": [
+        "culture",
+        "heritage",
+        "architecture"
+      ],
+      "coordinates": {
+        "lat": 11.4117,
+        "lng": 76.6950
+      },
       "estimated_duration_mins": 45,
       "best_time": "any",
       "crowd_level": "low",
@@ -252,8 +345,16 @@
     {
       "id": "poi-toy-train",
       "name": "Nilgiri Mountain Railway (Toy Train)",
-      "category": ["culture", "heritage", "experience", "scenic"],
-      "coordinates": { "lat": 11.4106, "lng": 76.6933 },
+      "category": [
+        "culture",
+        "heritage",
+        "experience",
+        "scenic"
+      ],
+      "coordinates": {
+        "lat": 11.4106,
+        "lng": 76.6933
+      },
       "estimated_duration_mins": 180,
       "best_time": "morning",
       "crowd_level": "high",
@@ -271,8 +372,14 @@
     {
       "id": "poi-kingstar-chocolate",
       "name": "Kingstar Chocolate Factory",
-      "category": ["food", "shopping"],
-      "coordinates": { "lat": 11.4075, "lng": 76.6967 },
+      "category": [
+        "food",
+        "shopping"
+      ],
+      "coordinates": {
+        "lat": 11.4075,
+        "lng": 76.6967
+      },
       "estimated_duration_mins": 30,
       "best_time": "any",
       "crowd_level": "medium",
@@ -290,8 +397,14 @@
     {
       "id": "poi-shinkows",
       "name": "Shinkow's Chinese Restaurant",
-      "category": ["food", "restaurant"],
-      "coordinates": { "lat": 11.4089, "lng": 76.6944 },
+      "category": [
+        "food",
+        "restaurant"
+      ],
+      "coordinates": {
+        "lat": 11.4089,
+        "lng": 76.6944
+      },
       "estimated_duration_mins": 60,
       "best_time": "evening",
       "crowd_level": "medium",
@@ -311,8 +424,15 @@
     {
       "id": "poi-earl-grey-cafe",
       "name": "Earl Grey Cafe & Tea Lounge",
-      "category": ["food", "cafe", "relaxation"],
-      "coordinates": { "lat": 11.4092, "lng": 76.6950 },
+      "category": [
+        "food",
+        "cafe",
+        "relaxation"
+      ],
+      "coordinates": {
+        "lat": 11.4092,
+        "lng": 76.6950
+      },
       "estimated_duration_mins": 45,
       "best_time": "afternoon",
       "crowd_level": "low",
@@ -332,8 +452,15 @@
     {
       "id": "poi-adderley",
       "name": "Adderley Tea Room",
-      "category": ["food", "cafe", "heritage"],
-      "coordinates": { "lat": 11.4050, "lng": 76.6920 },
+      "category": [
+        "food",
+        "cafe",
+        "heritage"
+      ],
+      "coordinates": {
+        "lat": 11.4050,
+        "lng": 76.6920
+      },
       "estimated_duration_mins": 45,
       "best_time": "afternoon",
       "crowd_level": "low",
@@ -353,8 +480,15 @@
     {
       "id": "poi-sidewalk-cafe",
       "name": "Sidewalk Cafe",
-      "category": ["food", "cafe", "vegetarian"],
-      "coordinates": { "lat": 11.4100, "lng": 76.6955 },
+      "category": [
+        "food",
+        "cafe",
+        "vegetarian"
+      ],
+      "coordinates": {
+        "lat": 11.4100,
+        "lng": 76.6955
+      },
       "estimated_duration_mins": 45,
       "best_time": "any",
       "crowd_level": "medium",
@@ -374,8 +508,14 @@
     {
       "id": "poi-hotel-nahar",
       "name": "Hotel Nahar Restaurant",
-      "category": ["food", "restaurant"],
-      "coordinates": { "lat": 11.4095, "lng": 76.6940 },
+      "category": [
+        "food",
+        "restaurant"
+      ],
+      "coordinates": {
+        "lat": 11.4095,
+        "lng": 76.6940
+      },
       "estimated_duration_mins": 60,
       "best_time": "any",
       "crowd_level": "medium",
@@ -395,8 +535,14 @@
     {
       "id": "poi-hyderabad-biryani",
       "name": "Hyderabad Biryani House",
-      "category": ["food", "restaurant"],
-      "coordinates": { "lat": 11.4085, "lng": 76.6935 },
+      "category": [
+        "food",
+        "restaurant"
+      ],
+      "coordinates": {
+        "lat": 11.4085,
+        "lng": 76.6935
+      },
       "estimated_duration_mins": 45,
       "best_time": "afternoon",
       "crowd_level": "medium",
@@ -416,8 +562,15 @@
     {
       "id": "poi-garden-restaurant",
       "name": "Garden Restaurant",
-      "category": ["food", "restaurant", "vegetarian"],
-      "coordinates": { "lat": 11.4080, "lng": 76.6950 },
+      "category": [
+        "food",
+        "restaurant",
+        "vegetarian"
+      ],
+      "coordinates": {
+        "lat": 11.4080,
+        "lng": 76.6950
+      },
       "estimated_duration_mins": 60,
       "best_time": "evening",
       "crowd_level": "low",
@@ -437,8 +590,14 @@
     {
       "id": "poi-willy-restaurant",
       "name": "Willy's Restaurant",
-      "category": ["food", "restaurant"],
-      "coordinates": { "lat": 11.4090, "lng": 76.6960 },
+      "category": [
+        "food",
+        "restaurant"
+      ],
+      "coordinates": {
+        "lat": 11.4090,
+        "lng": 76.6960
+      },
       "estimated_duration_mins": 60,
       "best_time": "evening",
       "crowd_level": "medium",
@@ -458,8 +617,15 @@
     {
       "id": "poi-boat-house",
       "name": "Boat House",
-      "category": ["activity", "boating", "family"],
-      "coordinates": { "lat": 11.4042, "lng": 76.6928 },
+      "category": [
+        "activity",
+        "boating",
+        "family"
+      ],
+      "coordinates": {
+        "lat": 11.4042,
+        "lng": 76.6928
+      },
       "estimated_duration_mins": 60,
       "best_time": "afternoon",
       "crowd_level": "high",
@@ -477,8 +643,15 @@
     {
       "id": "poi-dolphin-nose",
       "name": "Dolphin's Nose Viewpoint",
-      "category": ["nature", "scenic", "trekking"],
-      "coordinates": { "lat": 11.3492, "lng": 76.7892 },
+      "category": [
+        "nature",
+        "scenic",
+        "trekking"
+      ],
+      "coordinates": {
+        "lat": 11.3492,
+        "lng": 76.7892
+      },
       "estimated_duration_mins": 90,
       "best_time": "morning",
       "crowd_level": "low",
@@ -496,8 +669,15 @@
     {
       "id": "poi-lambs-rock",
       "name": "Lamb's Rock",
-      "category": ["nature", "scenic", "photography"],
-      "coordinates": { "lat": 11.3558, "lng": 76.8067 },
+      "category": [
+        "nature",
+        "scenic",
+        "photography"
+      ],
+      "coordinates": {
+        "lat": 11.3558,
+        "lng": 76.8067
+      },
       "estimated_duration_mins": 60,
       "best_time": "morning",
       "crowd_level": "medium",
@@ -515,8 +695,15 @@
     {
       "id": "poi-thread-garden",
       "name": "Thread Garden",
-      "category": ["culture", "art", "unique"],
-      "coordinates": { "lat": 11.4117, "lng": 76.6967 },
+      "category": [
+        "culture",
+        "art",
+        "unique"
+      ],
+      "coordinates": {
+        "lat": 11.4117,
+        "lng": 76.6967
+      },
       "estimated_duration_mins": 45,
       "best_time": "any",
       "crowd_level": "low",
@@ -534,8 +721,15 @@
     {
       "id": "poi-wax-world",
       "name": "Wax World",
-      "category": ["culture", "museum", "family"],
-      "coordinates": { "lat": 11.4100, "lng": 76.6975 },
+      "category": [
+        "culture",
+        "museum",
+        "family"
+      ],
+      "coordinates": {
+        "lat": 11.4100,
+        "lng": 76.6975
+      },
       "estimated_duration_mins": 45,
       "best_time": "any",
       "crowd_level": "medium",
@@ -553,8 +747,16 @@
     {
       "id": "poi-upper-bhavani-lake",
       "name": "Upper Bhavani Lake",
-      "category": ["nature", "scenic", "offbeat", "trekking"],
-      "coordinates": { "lat": 11.3667, "lng": 76.5000 },
+      "category": [
+        "nature",
+        "scenic",
+        "offbeat",
+        "trekking"
+      ],
+      "coordinates": {
+        "lat": 11.3667,
+        "lng": 76.5000
+      },
       "estimated_duration_mins": 180,
       "best_time": "morning",
       "crowd_level": "low",
@@ -572,8 +774,15 @@
     {
       "id": "poi-wenlock-downs",
       "name": "Wenlock Downs (Golf Course)",
-      "category": ["nature", "scenic", "relaxation"],
-      "coordinates": { "lat": 11.4033, "lng": 76.7267 },
+      "category": [
+        "nature",
+        "scenic",
+        "relaxation"
+      ],
+      "coordinates": {
+        "lat": 11.4033,
+        "lng": 76.7267
+      },
       "estimated_duration_mins": 45,
       "best_time": "any",
       "crowd_level": "low",
@@ -591,8 +800,15 @@
     {
       "id": "poi-toda-huts",
       "name": "Toda Huts",
-      "category": ["culture", "heritage", "offbeat"],
-      "coordinates": { "lat": 11.4200, "lng": 76.7100 },
+      "category": [
+        "culture",
+        "heritage",
+        "offbeat"
+      ],
+      "coordinates": {
+        "lat": 11.4200,
+        "lng": 76.7100
+      },
       "estimated_duration_mins": 45,
       "best_time": "any",
       "crowd_level": "low",
@@ -610,8 +826,15 @@
     {
       "id": "poi-kamaraj-sagar-dam",
       "name": "Kamaraj Sagar Dam",
-      "category": ["nature", "scenic", "offbeat"],
-      "coordinates": { "lat": 11.4500, "lng": 76.6667 },
+      "category": [
+        "nature",
+        "scenic",
+        "offbeat"
+      ],
+      "coordinates": {
+        "lat": 11.4500,
+        "lng": 76.6667
+      },
       "estimated_duration_mins": 60,
       "best_time": "afternoon",
       "crowd_level": "low",
@@ -623,6 +846,239 @@
         "Boating available at lower cost than Ooty Lake",
         "Peaceful alternative to crowded spots",
         "Good sunset views"
+      ],
+      "source": "local"
+    },
+    {
+      "id": "poi-elk-hill-temple",
+      "name": "Elk Hill Murugan Temple",
+      "category": [
+        "culture",
+        "heritage",
+        "religion"
+      ],
+      "coordinates": {
+        "lat": 11.4000,
+        "lng": 76.7100
+      },
+      "estimated_duration_mins": 60,
+      "best_time": "morning",
+      "crowd_level": "medium",
+      "accessibility": "moderate",
+      "cost_inr": 0,
+      "description": "A beautiful temple dedicated to Lord Murugan, featuring a giant golden statue similar to the one at Batu Caves in Malaysia. Offers stunning views of Ooty town.",
+      "tips": [
+        "Visit during morning hours for best atmosphere",
+        "Steps required to climb - wear comfortable shoes",
+        "Great for photography of the golden statue",
+        "Peaceful and spiritual environment"
+      ],
+      "source": "local"
+    },
+    {
+      "id": "poi-catherine-falls",
+      "name": "Catherine Falls",
+      "category": [
+        "nature",
+        "scenic",
+        "waterfall"
+      ],
+      "coordinates": {
+        "lat": 11.3300,
+        "lng": 76.8800
+      },
+      "estimated_duration_mins": 90,
+      "best_time": "morning",
+      "crowd_level": "low",
+      "accessibility": "moderate",
+      "cost_inr": 0,
+      "description": "Double-cascaded waterfall in Kotagiri. It is the second-highest waterfall in the Nilgiris, named after Catherine Cockburn, wife of M.D. Cockburn, the pioneer of coffee plantation in Kotagiri.",
+      "tips": [
+        "Best view from Dolphin's Nose viewpoint across the valley",
+        "Can be accessed via a 2km trek for a closer view",
+        "Visible from the main road near Kotagiri",
+        "Spectacular after monsoon"
+      ],
+      "source": "wikivoyage"
+    },
+    {
+      "id": "poi-kotagiri",
+      "name": "Kotagiri Town",
+      "category": [
+        "culture",
+        "scenic",
+        "nature"
+      ],
+      "coordinates": {
+        "lat": 11.4300,
+        "lng": 76.8800
+      },
+      "estimated_duration_mins": 120,
+      "best_time": "any",
+      "crowd_level": "low",
+      "accessibility": "easy",
+      "cost_inr": 0,
+      "description": "The oldest hill station in the Nilgiris, quieter and less commercialized than Ooty. Known for its perfect climate and vast tea plantations.",
+      "tips": [
+        "Ideal for long walks through tea estates",
+        "Visit Kodanad View Point nearby",
+        "Explore Longwood Shola forest",
+        "Quieter alternative to Ooty for stay"
+      ],
+      "source": "local"
+    },
+    {
+      "id": "poi-kodanad-viewpoint",
+      "name": "Kodanad View Point",
+      "category": [
+        "nature",
+        "scenic"
+      ],
+      "coordinates": {
+        "lat": 11.5300,
+        "lng": 76.8800
+      },
+      "estimated_duration_mins": 60,
+      "best_time": "morning",
+      "crowd_level": "medium",
+      "accessibility": "easy",
+      "cost_inr": 0,
+      "description": "Offers breathtaking views of the Rangasamy Peak, Catherine Falls, and the Moyar River. Known as the 'Terminus of the Nilgiris'.",
+      "tips": [
+        "Morning mist makes it magical but can block views",
+        "Binoculars recommended",
+        "Small park nearby for children",
+        "About 18 km from Kotagiri"
+      ],
+      "source": "osm"
+    },
+    {
+      "id": "poi-mukurthi-national-park",
+      "name": "Mukurthi National Park",
+      "category": [
+        "nature",
+        "scenic",
+        "wildlife",
+        "trekking"
+      ],
+      "coordinates": {
+        "lat": 11.2100,
+        "lng": 76.5500
+      },
+      "estimated_duration_mins": 240,
+      "best_time": "morning",
+      "crowd_level": "low",
+      "accessibility": "difficult",
+      "cost_inr": 200,
+      "description": "A protected area designed to protect its keystone species, the Nilgiri tahr. Characterized by montane grasslands and shrublands interspersed with sholas.",
+      "tips": [
+        "Strict permit required from the Forest Department",
+        "Guided treks are the only way to explore",
+        "Home to Nilgiri tahr and Nilgiri langur",
+        "Plastic-free zone"
+      ],
+      "source": "local"
+    },
+    {
+      "id": "poi-cairn-hill",
+      "name": "Cairn Hill",
+      "category": [
+        "nature",
+        "scenic",
+        "trekking"
+      ],
+      "coordinates": {
+        "lat": 11.3900,
+        "lng": 76.6800
+      },
+      "estimated_duration_mins": 60,
+      "best_time": "morning",
+      "crowd_level": "low",
+      "accessibility": "moderate",
+      "cost_inr": 20,
+      "description": "One of the oldest cypress plantations in the Nilgiris. Features a nature trail, a hanging bridge, and a watchtower with great views.",
+      "tips": [
+        "Excellent spot for bird watching",
+        "Nature walk is peaceful and well-marked",
+        "Hanging bridge is popular for photos",
+        "Quiet alternative to Ooty town gardens"
+      ],
+      "source": "local"
+    },
+    {
+      "id": "poi-coonoor-market",
+      "name": "Coonoor Market",
+      "category": [
+        "culture",
+        "food",
+        "shopping"
+      ],
+      "coordinates": {
+        "lat": 11.3500,
+        "lng": 76.7900
+      },
+      "estimated_duration_mins": 90,
+      "best_time": "afternoon",
+      "crowd_level": "high",
+      "accessibility": "easy",
+      "cost_inr": 0,
+      "description": "A bustling local market in Coonoor where you can find fresh local produce, spices, local honey, and handmade oils.",
+      "tips": [
+        "Buy local honey and Nilgiri eucalyptus oil here",
+        "Great for trying local street food",
+        "Experience the authentic vibe of the Nilgiris",
+        "Best visited on market days"
+      ],
+      "source": "local"
+    },
+    {
+      "id": "poi-moddys-chocolate",
+      "name": "Moddy's Confectionery",
+      "category": [
+        "food",
+        "shopping"
+      ],
+      "coordinates": {
+        "lat": 11.4100,
+        "lng": 76.7000
+      },
+      "estimated_duration_mins": 30,
+      "best_time": "any",
+      "crowd_level": "high",
+      "accessibility": "easy",
+      "cost_inr": 0,
+      "description": "A premium chocolate shop and bakery in Ooty. Famous for its truffles, fudges, and wide variety of handmade chocolates.",
+      "tips": [
+        "The dark chocolate truffles are a must-try",
+        "Sells beautiful gift boxes",
+        "Can get very crowded - be patient",
+        "Excellent baked goods as well"
+      ],
+      "source": "local"
+    },
+    {
+      "id": "poi-bison-valley",
+      "name": "Bison Valley Viewpoint",
+      "category": [
+        "nature",
+        "scenic",
+        "wildlife"
+      ],
+      "coordinates": {
+        "lat": 11.4500,
+        "lng": 76.7500
+      },
+      "estimated_duration_mins": 45,
+      "best_time": "morning",
+      "crowd_level": "medium",
+      "accessibility": "moderate",
+      "cost_inr": 0,
+      "description": "Named after the Indian Gaur (Bison) that can often be spotted in the valley below. Offers wide views of the Bellakkal valley.",
+      "tips": [
+        "Early morning is the best time for spotting wildlife",
+        "Road to the viewpoint is scenic but narrow",
+        "Carry binoculars",
+        "Great for nature photography"
       ],
       "source": "local"
     }

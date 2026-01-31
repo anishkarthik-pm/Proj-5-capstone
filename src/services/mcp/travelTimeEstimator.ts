@@ -112,8 +112,8 @@ function normalizePOIName(name: string): string {
   const matrixKeys = Object.keys(travelMatrix);
   for (const key of matrixKeys) {
     if (key.toLowerCase() === lowerName ||
-        lowerName.includes(key.toLowerCase().replace("poi-", "").replace(/-/g, " ")) ||
-        key.toLowerCase().replace("poi-", "").replace(/-/g, " ").includes(lowerName)) {
+      lowerName.includes(key.toLowerCase().replace("poi-", "").replace(/-/g, " ")) ||
+      key.toLowerCase().replace("poi-", "").replace(/-/g, " ").includes(lowerName)) {
       return key;
     }
   }
@@ -300,9 +300,11 @@ export function hasTravelTime(from: string, to: string): boolean {
   return getBaseTravelTime(from, to) !== null;
 }
 
-export default {
+const travelTimeEstimator = {
   estimateTravelTime,
   calculateRouteTime,
   getTravelTime,
   hasTravelTime,
 };
+
+export default travelTimeEstimator;
