@@ -46,7 +46,7 @@ import { initializeRAG } from "@/services/rag";
 
 export default function Home() {
   const { itinerary, setItinerary, setLoading, isLoading } = useTripStore();
-  const { setCurrentResponse, addToHistory, setStatus, isSpeaking } = useVoiceStore();
+  const { setCurrentResponse, addToHistory, setStatus } = useVoiceStore();
   const { addMessage, setProcessing, isProcessing } = useConversationStore();
   const { isDemoMode } = useUIStore();
   const { logInfo, logSuccess, logError } = useDebugStore();

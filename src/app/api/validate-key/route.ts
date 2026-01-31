@@ -70,7 +70,7 @@ export async function GET() {
             originalModel: model,
             testResponse: response.slice(0, 50),
           });
-        } catch (fallbackError) {
+        } catch (_fallbackError) {
           continue; // Try next fallback model
         }
       }
