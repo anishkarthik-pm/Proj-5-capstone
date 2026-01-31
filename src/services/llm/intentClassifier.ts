@@ -195,13 +195,31 @@ export async function classifyIntent(
   let intentType: IntentType = "unclear";
 
   for (const [type, score] of Object.entries(scores)) {
-    if (score > maxScore && score > 0.3) {
+    if (score > maxScore) {
       maxScore = score;
       intentType = type as IntentType;
     }
   }
 
-  // If no clear intent, mark as unclear
+  // If intent is ambiguous or low confidence, use LLM
+  if (maxScore < 0.6) {
+    try {
+      const { classifyIntentWithLLM } = await import("./conversationLLM");
+      const llmIntent = await classifyIntentWithLLM({
+        transcript,
+        hasItinerary: hasExistingItinerary
+      });
+
+      if (llmIntent.confidence > maxScore) {
+        intentType = llmIntent.type as IntentType;
+        maxScore = llmIntent.confidence;
+      }
+    } catch (error) {
+      console.error("LLM Classification failed:", error);
+    }
+  }
+
+  // If still no clear intent, mark as unclear
   if (maxScore < 0.3) {
     intentType = "unclear";
   }

@@ -280,28 +280,29 @@ export class EditAgent {
             description: `Swap Day ${targetDay} and Day ${parsedIntent.targetDayNumber}`,
           };
         }
-        return this.createSwapOperation(targetDay, text.toLowerCase(), itinerary);
+        return this.createSwapOperation(targetDay, text.toLowerCase(), itinerary, parsedIntent);
 
       case "add":
-        return this.createAddOperation(targetDay, timeSlot, text.toLowerCase(), itinerary);
+        return this.createAddOperation(targetDay, timeSlot, text.toLowerCase(), itinerary, parsedIntent);
 
       case "remove":
         return this.createRemoveOperation(
           targetDay,
           timeSlot,
           text.toLowerCase(),
-          itinerary.days[targetDay - 1]
+          itinerary.days[targetDay - 1],
+          parsedIntent
         );
 
       case "replace":
         // If user wants options first, use two-step flow
         if (parsedIntent.needsOptions) {
-          return this.createReplaceWithOptionsOperation(targetDay, timeSlot, text.toLowerCase(), itinerary);
+          return this.createReplaceWithOptionsOperation(targetDay, timeSlot, text.toLowerCase(), itinerary, parsedIntent);
         }
-        return this.createReplaceOperation(targetDay, timeSlot, text.toLowerCase(), itinerary);
+        return this.createReplaceOperation(targetDay, timeSlot, text.toLowerCase(), itinerary, parsedIntent);
 
       case "swap":
-        return this.createSwapOperation(targetDay, text.toLowerCase(), itinerary);
+        return this.createSwapOperation(targetDay, text.toLowerCase(), itinerary, parsedIntent);
 
       default:
         // Low confidence or unknown - ask for clarification
@@ -309,7 +310,7 @@ export class EditAgent {
           return null;
         }
         // Try to make a best guess
-        return this.createReplaceWithOptionsOperation(targetDay, timeSlot, text.toLowerCase(), itinerary);
+        return this.createReplaceWithOptionsOperation(targetDay, timeSlot, text.toLowerCase(), itinerary, parsedIntent);
     }
   }
 
@@ -421,17 +422,28 @@ export class EditAgent {
     dayNumber: number,
     timeSlot: "morning" | "afternoon" | "evening" | undefined,
     text: string,
-    day: DayPlan
+    day: DayPlan,
+    parsedIntent?: ParsedEditIntent
   ): EditOperation | null {
     // Find the block to remove
     let blockId: string | undefined;
 
-    // First, try to find by spot number
-    const spotNumber = this.extractSpotNumber(text);
-    if (spotNumber) {
-      const block = this.findBlockBySpotNumber(day, spotNumber);
-      if (block) {
-        blockId = block.id;
+    // First, try to find by POI name from LLM
+    if (parsedIntent?.poiName) {
+      const block = day.blocks.find(b =>
+        b.poi.name.toLowerCase().includes(parsedIntent.poiName!.toLowerCase())
+      );
+      if (block) blockId = block.id;
+    }
+
+    // Then, try to find by spot number
+    if (!blockId) {
+      const spotNumber = this.extractSpotNumber(text);
+      if (spotNumber) {
+        const block = this.findBlockBySpotNumber(day, spotNumber);
+        if (block) {
+          blockId = block.id;
+        }
       }
     }
 
@@ -477,7 +489,8 @@ export class EditAgent {
     dayNumber: number,
     timeSlot: "morning" | "afternoon" | "evening" | undefined,
     text: string,
-    itinerary: Itinerary
+    itinerary: Itinerary,
+    parsedIntent?: ParsedEditIntent
   ): Promise<EditOperation | null> {
     // Try to identify what to add
     const existingPOIIds = itinerary.days
@@ -485,15 +498,23 @@ export class EditAgent {
       .map((b) => b.poi.id);
 
     // Search for a POI matching the request
-    const searchTerms: string[] = [];
+    let searchTerms: string[] = [];
 
-    if (/tea|garden|factory/.test(text)) searchTerms.push("tea");
-    if (/restaurant|food|eat|lunch|dinner|breakfast|cafe|snack/.test(text)) searchTerms.push("food");
-    if (/church|museum|heritage/.test(text)) searchTerms.push("culture");
-    if (/view|scenic|peak|point|viewpoint/.test(text)) searchTerms.push("nature");
-    if (/chocolate|shop/.test(text)) searchTerms.push("shopping");
-    if (/lake|boat/.test(text)) searchTerms.push("boating");
-    if (/trek|hike|adventure/.test(text)) searchTerms.push("adventure");
+    // Use POI type or name from LLM if available
+    if (parsedIntent?.poiType) {
+      searchTerms.push(parsedIntent.poiType);
+    } else if (parsedIntent?.poiName) {
+      searchTerms.push(parsedIntent.poiName);
+    } else {
+      // Fallback to regex
+      if (/tea|garden|factory/.test(text)) searchTerms.push("tea");
+      if (/restaurant|food|eat|lunch|dinner|breakfast|cafe|snack/.test(text)) searchTerms.push("food");
+      if (/church|museum|heritage/.test(text)) searchTerms.push("culture");
+      if (/view|scenic|peak|point|viewpoint/.test(text)) searchTerms.push("nature");
+      if (/chocolate|shop/.test(text)) searchTerms.push("shopping");
+      if (/lake|boat/.test(text)) searchTerms.push("boating");
+      if (/trek|hike|adventure/.test(text)) searchTerms.push("adventure");
+    }
 
     // Default to the user's existing interests if no specific request
     const interests =
@@ -529,7 +550,8 @@ export class EditAgent {
   private createSwapOperation(
     dayNumber: number,
     text: string,
-    itinerary: Itinerary
+    itinerary: Itinerary,
+    parsedIntent?: ParsedEditIntent
   ): EditOperation | null {
     const day = itinerary.days[dayNumber - 1];
     if (!day || day.blocks.length < 2) {
@@ -581,7 +603,8 @@ export class EditAgent {
     dayNumber: number,
     timeSlot: "morning" | "afternoon" | "evening" | undefined,
     text: string,
-    itinerary: Itinerary
+    itinerary: Itinerary,
+    parsedIntent?: ParsedEditIntent
   ): Promise<EditOperation | null> {
     const day = itinerary.days[dayNumber - 1];
     if (!day) return null;
@@ -589,10 +612,19 @@ export class EditAgent {
     // Find which block to replace
     let blockToReplace: TimeBlock | undefined;
 
-    // First, try to find by spot number
-    const spotNumber = this.extractSpotNumber(text);
-    if (spotNumber) {
-      blockToReplace = this.findBlockBySpotNumber(day, spotNumber);
+    // Try to find by name from LLM first (what they want to replace)
+    if (parsedIntent?.poiName && !text.includes("with")) { // If they said "replace X", but not "replace X with Y" yet
+      blockToReplace = day.blocks.find(b =>
+        b.poi.name.toLowerCase().includes(parsedIntent.poiName!.toLowerCase())
+      );
+    }
+
+    // Then try by spot number
+    if (!blockToReplace) {
+      const spotNumber = this.extractSpotNumber(text);
+      if (spotNumber) {
+        blockToReplace = this.findBlockBySpotNumber(day, spotNumber);
+      }
     }
 
     // Then try by time slot
@@ -600,7 +632,7 @@ export class EditAgent {
       blockToReplace = day.blocks.find((b) => b.timeSlot === timeSlot);
     }
 
-    // Try to find by name
+    // Try to find by name in text
     if (!blockToReplace) {
       for (const block of day.blocks) {
         if (text.includes(block.poi.name.toLowerCase())) {
@@ -625,7 +657,17 @@ export class EditAgent {
     // Try to identify what kind of replacement is wanted
     let interests = itinerary.preferences.interests || ["nature"];
 
-    if (/indoor|inside|rain/.test(text)) {
+    if (parsedIntent?.poiType) {
+      interests = [parsedIntent.poiType];
+    } else if (parsedIntent?.poiName && text.includes("with")) {
+      // "Replace X with Y" - search for Y
+      const withMatch = text.match(/with\s+(?:the\s+)?(.*?)(?:\s+on|\s+at|$)/i);
+      if (withMatch) {
+        interests = [withMatch[1]];
+      } else {
+        interests = [parsedIntent.poiName];
+      }
+    } else if (/indoor|inside|rain/.test(text)) {
       interests = ["culture", "food", "shopping"];
     } else if (/outdoor|outside|nature/.test(text)) {
       interests = ["nature", "adventure"];
@@ -662,7 +704,8 @@ export class EditAgent {
     dayNumber: number,
     timeSlot: "morning" | "afternoon" | "evening" | undefined,
     text: string,
-    itinerary: Itinerary
+    itinerary: Itinerary,
+    parsedIntent?: ParsedEditIntent
   ): Promise<EditOperation | null> {
     const day = itinerary.days[dayNumber - 1];
     if (!day) return null;
@@ -670,10 +713,19 @@ export class EditAgent {
     // Find which block user wants to replace (if specified)
     let blockToReplace: TimeBlock | undefined;
 
-    // First, try to find by spot number
-    const spotNumber = this.extractSpotNumber(text);
-    if (spotNumber) {
-      blockToReplace = this.findBlockBySpotNumber(day, spotNumber);
+    // Try by name from LLM first
+    if (parsedIntent?.poiName) {
+      blockToReplace = day.blocks.find(b =>
+        b.poi.name.toLowerCase().includes(parsedIntent.poiName!.toLowerCase())
+      );
+    }
+
+    // Then, try to find by spot number
+    if (!blockToReplace) {
+      const spotNumber = this.extractSpotNumber(text);
+      if (spotNumber) {
+        blockToReplace = this.findBlockBySpotNumber(day, spotNumber);
+      }
     }
 
     // Then try by time slot
@@ -1097,8 +1149,8 @@ export class EditAgent {
           const day2Idx = operation.targetDayNumber - 1;
 
           if (day1Idx >= 0 && day2Idx >= 0 &&
-              day1Idx < updatedItinerary.days.length &&
-              day2Idx < updatedItinerary.days.length) {
+            day1Idx < updatedItinerary.days.length &&
+            day2Idx < updatedItinerary.days.length) {
             // Swap the days' blocks and themes
             const day1 = updatedItinerary.days[day1Idx];
             const day2 = updatedItinerary.days[day2Idx];

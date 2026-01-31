@@ -93,19 +93,19 @@ export async function generateEditResponse(params: {
 }): Promise<string> {
   const { action, changedItems, itinerary, userRequest } = params;
 
-  const prompt = `You are a friendly travel assistant who just modified an Ooty trip itinerary.
-
-User asked: "${userRequest}"
+  const prompt = `You are a professional and friendly travel assistant who just modified an Ooty trip itinerary.
+  
+User requested: "${userRequest}"
 Action taken: ${action}
-Changed: ${changedItems.join(", ")}
-Itinerary now has ${itinerary.days.length} days with ${itinerary.days.reduce((s, d) => s + d.blocks.length, 0)} activities.
+Specific items changed: ${changedItems.join(", ")}
+New trip state: ${itinerary.days.length} days, total of ${itinerary.days.reduce((s, d) => s + d.blocks.length, 0)} activities.
 
-Generate a brief, warm confirmation (1-2 sentences) that:
-1. Confirms the change was made
-2. Mentions what specifically changed
-3. Optionally suggests what else they can do
+Generate a natural, helpful, and informative confirmation response (2-3 sentences) that:
+1. Confirms the specific changes were made (be precise about names)
+2. Explains briefly why this is a good change or what the user can expect from the new itinerary
+3. Maintains a professional yet warm travel consultant tone
 
-Be conversational and friendly. No emojis.`;
+No emojis. Be specific to the changes made. Avoid generic "I have updated the itinerary" if you can be more descriptive.`;
 
   try {
     const result = await generateCompletion([{ role: "user", content: prompt }]);
@@ -282,8 +282,8 @@ export async function generateClarifyingQuestion(params: {
   } else if (questionType === "needsPickupDrop" && previousAnswers.arrivalPoint) {
     const arrival = previousAnswers.arrivalPoint as string;
     const arrivalText = arrival === "airport" ? "Coimbatore airport" :
-                        arrival === "railway" ? "the railway station" :
-                        arrival === "bus" ? "the bus stand" : "your own vehicle";
+      arrival === "railway" ? "the railway station" :
+        arrival === "bus" ? "the bus stand" : "your own vehicle";
     contextPrefix = `Arriving via ${arrivalText}. `;
   } else if (questionType === "hotelCategory" && previousAnswers.groupSize) {
     const size = previousAnswers.groupSize as number;
@@ -340,8 +340,8 @@ export async function generateConfirmationMessage(params: {
     let transportNote = `Transport: ${vehicle.charAt(0).toUpperCase() + vehicle.slice(1)} for local travel`;
     if (needsPickup && arrivalPoint) {
       const arrivalText = arrivalPoint === "airport" ? "Coimbatore airport" :
-                          arrivalPoint === "railway" ? "railway station" :
-                          arrivalPoint === "bus" ? "bus stand" : "";
+        arrivalPoint === "railway" ? "railway station" :
+          arrivalPoint === "bus" ? "bus stand" : "";
       if (arrivalText) {
         transportNote += `, pickup from ${arrivalText}`;
       }
@@ -546,7 +546,7 @@ Trip Details:
 
   // Check if user is asking about a specific place
   const isAskingAboutPlace = /explain|tell.*about|talk.*about|what.*about|describe|info.*about|more.*about|details.*about/i.test(userText);
-  const placeInQuestion = currentItinerary ? 
+  const placeInQuestion = currentItinerary ?
     currentItinerary.days.flatMap(d => d.blocks.map(b => b.poi.name))
       .find(name => userText.toLowerCase().includes(name.toLowerCase().split(/\s+/)[0])) : null;
 
@@ -560,11 +560,11 @@ USER JUST SAID: "${userText}"
 ${isAskingAboutPlace && placeInQuestion ? `\nNOTE: User is asking about "${placeInQuestion}" - provide specific information about this place.` : ""}
 
 Generate a helpful response that:
-${isAskingAboutPlace && placeInQuestion ? 
-  `1. Provide specific information about ${placeInQuestion} from their itinerary
+${isAskingAboutPlace && placeInQuestion ?
+      `1. Provide specific information about ${placeInQuestion} from their itinerary
 2. Explain what makes it special, what to expect, and why it's in their plan
 3. Be informative and detailed (3-4 sentences)` :
-  `1. If they have an itinerary: Briefly acknowledge their request and guide them
+      `1. If they have an itinerary: Briefly acknowledge their request and guide them
 2. If no itinerary: Guide them on how to start planning
 3. Answer any question they might have based on context
 4. Be specific and helpful`}
@@ -638,6 +638,41 @@ Generate a helpful, natural response. Be specific and informative. If you don't 
   }
 }
 
+/**
+ * LLM-based intent classifier fallback
+ */
+export async function classifyIntentWithLLM(params: {
+  transcript: string;
+  hasItinerary: boolean;
+}): Promise<{ type: string; confidence: number }> {
+  const { transcript, hasItinerary } = params;
+
+  const prompt = `Classify the user's intent for an Ooty travel planning assistant.
+USER SAYS: "${transcript}"
+CONTEXT: ${hasItinerary ? "User HAS an itinerary on screen." : "No itinerary yet."}
+
+INTENT TYPES:
+- "plan": Starting a new trip, asking to build a schedule, or giving preferences for a trip.
+- "edit": Modifying an existing itinerary (adding/removing/swapping activities).
+- "query": Asking "why" something is there, asking for "more info", asking for suggestions/alternatives, or checking feasibility.
+- "confirm": Saying "yes", "okay", "looks good", or "thank you".
+- "unclear": Greeting, nonsensical, or completely unrelated.
+
+Return JSON only: {"type": "plan" | "edit" | "query" | "confirm" | "unclear", "confidence": 0-1}`;
+
+  try {
+    const result = await generateCompletion([{ role: "user", content: prompt }]);
+    const content = result?.content || "";
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
+    return { type: "unclear", confidence: 0.1 };
+  } catch {
+    return { type: "unclear", confidence: 0 };
+  }
+}
+
 const conversationLLM = {
   generateItineraryResponse,
   generateEditResponse,
@@ -648,6 +683,7 @@ const conversationLLM = {
   parseEditIntent,
   generateContextualHelp,
   generateQueryResponse,
+  classifyIntentWithLLM,
 };
 
 export default conversationLLM;
