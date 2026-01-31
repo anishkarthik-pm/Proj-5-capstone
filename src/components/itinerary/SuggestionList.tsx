@@ -14,10 +14,12 @@ export interface SuggestionItem {
 
 interface SuggestionListProps {
   suggestions: SuggestionItem[];
-  onSelect: (suggestion: SuggestionItem, dayNumber?: number) => void;
+  onSelect: (suggestion: SuggestionItem, dayNumber?: number, timeSlot?: "morning" | "afternoon" | "evening") => void;
   availableDays?: number[];
   className?: string;
   title?: string;
+  mode?: "add" | "swap"; // Add swap mode
+  swapTarget?: { dayNumber: number; timeSlot: "morning" | "afternoon" | "evening" }; // For swap mode
 }
 
 export function SuggestionList({
@@ -26,20 +28,48 @@ export function SuggestionList({
   availableDays = [1, 2, 3],
   className,
   title = "Suggested Places",
+  mode = "add",
+  swapTarget,
 }: SuggestionListProps) {
-  const [selectedDay, setSelectedDay] = React.useState<number | null>(null);
+  const [selectedDay, setSelectedDay] = React.useState<number | null>(swapTarget?.dayNumber || null);
+  const [selectedTimeSlot, setSelectedTimeSlot] = React.useState<"morning" | "afternoon" | "evening" | null>(swapTarget?.timeSlot || null);
   const [selectedSuggestion, setSelectedSuggestion] = React.useState<SuggestionItem | null>(null);
 
   const handleSuggestionClick = (suggestion: SuggestionItem) => {
+    // If in swap mode with swapTarget, complete immediately
+    if (mode === "swap" && swapTarget) {
+      onSelect(suggestion, swapTarget.dayNumber, swapTarget.timeSlot);
+      return;
+    }
+    // Otherwise, select the suggestion and show day/time selection
     setSelectedSuggestion(suggestion);
-    setSelectedDay(null); // Reset day selection
+    if (mode === "add") {
+      setSelectedDay(null); // Reset for add mode
+      setSelectedTimeSlot(null);
+    }
   };
 
   const handleDaySelect = (dayNumber: number) => {
-    if (selectedSuggestion) {
+    setSelectedDay(dayNumber);
+    // In add mode, if we have a suggestion, we can complete (time slot optional)
+    if (mode === "add" && selectedSuggestion) {
+      // For add mode, time slot is optional - complete if suggestion is selected
       onSelect(selectedSuggestion, dayNumber);
       setSelectedSuggestion(null);
       setSelectedDay(null);
+      setSelectedTimeSlot(null);
+    }
+    // In swap mode without swapTarget, wait for time slot selection
+  };
+
+  const handleTimeSlotSelect = (timeSlot: "morning" | "afternoon" | "evening") => {
+    setSelectedTimeSlot(timeSlot);
+    // If we have both day and suggestion, complete the selection
+    if (selectedDay && selectedSuggestion) {
+      onSelect(selectedSuggestion, selectedDay, timeSlot);
+      setSelectedSuggestion(null);
+      setSelectedDay(null);
+      setSelectedTimeSlot(null);
     }
   };
 
@@ -113,27 +143,53 @@ export function SuggestionList({
               </Button>
             </div>
 
-            {/* Day selection panel */}
+            {/* Day and Time Slot selection panel */}
             {selectedSuggestion?.name === suggestion.name && (
-              <div className="mt-3 pt-3 border-t flex items-center gap-2 flex-wrap">
-                <span className="text-xs text-muted-foreground">Add to:</span>
-                {availableDays.map((day) => (
-                  <Button
-                    key={day}
-                    variant="outline"
-                    size="sm"
-                    className={cn(
-                      "h-7 px-3 text-xs",
-                      selectedDay === day && "bg-primary text-primary-foreground"
-                    )}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDaySelect(day);
-                    }}
-                  >
-                    Day {day}
-                  </Button>
-                ))}
+              <div className="mt-3 pt-3 border-t space-y-2">
+                {/* Day selection */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs text-muted-foreground">{mode === "swap" ? "Swap on:" : "Add to:"}</span>
+                  {availableDays.map((day) => (
+                    <Button
+                      key={day}
+                      variant="outline"
+                      size="sm"
+                      className={cn(
+                        "h-7 px-3 text-xs",
+                        selectedDay === day && "bg-primary text-primary-foreground"
+                      )}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDaySelect(day);
+                      }}
+                    >
+                      Day {day}
+                    </Button>
+                  ))}
+                </div>
+                {/* Time slot selection (only show if day is selected and in swap mode without swapTarget) */}
+                {(selectedDay && mode === "swap" && !swapTarget) && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs text-muted-foreground">Time:</span>
+                    {(["morning", "afternoon", "evening"] as const).map((slot) => (
+                      <Button
+                        key={slot}
+                        variant="outline"
+                        size="sm"
+                        className={cn(
+                          "h-7 px-3 text-xs capitalize",
+                          selectedTimeSlot === slot && "bg-primary text-primary-foreground"
+                        )}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleTimeSlotSelect(slot);
+                        }}
+                      >
+                        {slot}
+                      </Button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -141,7 +197,9 @@ export function SuggestionList({
       </div>
 
       <p className="text-xs text-muted-foreground text-center pt-2 border-t">
-        Click a suggestion to add it to your itinerary, or say &quot;add [name] to Day [number]&quot;
+        {mode === "swap" 
+          ? "Click a suggestion to swap, then select day and time slot"
+          : "Click a suggestion to add it to your itinerary, or say \"add [name] to Day [number]\""}
       </p>
     </div>
   );

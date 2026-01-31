@@ -729,8 +729,9 @@ export class EditAgent {
     }
 
     // Store pending modification for two-step flow
+    // If blockToReplace is not found, we need user to select day/time slot
     this.pendingModification = {
-      type: "awaiting_replacement_choice",
+      type: blockToReplace ? "awaiting_replacement_choice" : "awaiting_slot_choice",
       dayNumber,
       blockToReplace,
       options: result.pois,
@@ -740,6 +741,7 @@ export class EditAgent {
       type: "replace_with_options",
       dayNumber,
       blockId: blockToReplace?.id,
+      timeSlot: blockToReplace?.timeSlot,
       description: "Show replacement options",
       replacementOptions: result.pois,
     };
@@ -1030,6 +1032,15 @@ export class EditAgent {
             message += `\nYour Day ${operation.dayNumber} currently has: ${currentActivities}.\n`;
             message += `Which option would you like? Just say the number or name.`;
 
+            // Determine if this is a swap operation and get target info
+            // Only set swapTarget if both day AND time slot are explicitly known
+            // This allows UI to show day/time selection when user needs to choose
+            const blockToReplace = this.pendingModification?.blockToReplace;
+            const swapTarget = (blockToReplace && blockToReplace.timeSlot) ? {
+              dayNumber: operation.dayNumber,
+              timeSlot: blockToReplace.timeSlot,
+            } : undefined; // Don't set swapTarget if time slot is unknown - let UI show selection
+
             return {
               success: true,
               message,
@@ -1038,7 +1049,10 @@ export class EditAgent {
                 awaitingReplacementChoice: true,
                 options: operation.replacementOptions,
                 formattedSuggestions: llmResult.formattedSuggestions,
+                suggestions: operation.replacementOptions.slice(0, llmResult.formattedSuggestions.length),
                 isSelectableList: true,
+                swapMode: true, // Always true for replace_with_options
+                swapTarget,
               },
               shouldSpeak: true,
             };
@@ -1050,6 +1064,15 @@ export class EditAgent {
             });
             message += `\nWhich would you like? Say the number or name.`;
 
+            // Determine if this is a swap operation and get target info
+            // Only set swapTarget if both day AND time slot are explicitly known
+            // This allows UI to show day/time selection when user needs to choose
+            const blockToReplace = this.pendingModification?.blockToReplace;
+            const swapTarget = (blockToReplace && blockToReplace.timeSlot) ? {
+              dayNumber: operation.dayNumber,
+              timeSlot: blockToReplace.timeSlot,
+            } : undefined; // Don't set swapTarget if time slot is unknown - let UI show selection
+
             return {
               success: true,
               message,
@@ -1057,7 +1080,10 @@ export class EditAgent {
                 needsClarification: true,
                 awaitingReplacementChoice: true,
                 options: operation.replacementOptions,
+                suggestions: operation.replacementOptions,
                 isSelectableList: true,
+                swapMode: true, // Always true for replace_with_options
+                swapTarget,
               },
               shouldSpeak: true,
             };

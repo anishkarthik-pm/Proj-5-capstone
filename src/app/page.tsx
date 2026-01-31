@@ -52,6 +52,10 @@ export default function Home() {
   const { logInfo, logSuccess, logError } = useDebugStore();
   const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<SuggestionItem[]>([]);
+  const [currentResponseData, setCurrentResponseData] = useState<{
+    swapMode?: boolean;
+    swapTarget?: { dayNumber: number; timeSlot: "morning" | "afternoon" | "evening" };
+  } | null>(null);
 
   // Initialize RAG on mount
   useEffect(() => {
@@ -66,10 +70,8 @@ export default function Home() {
     async (transcript: string) => {
       if (!transcript.trim()) return;
 
-      // Stop any current speech
-      if (isSpeaking) {
-        stopSpeaking();
-      }
+      // Stop any current speech immediately when user starts speaking
+      stopSpeaking();
 
       // Log user input
       logInfo("user", `Voice input: "${transcript}"`);
@@ -112,12 +114,29 @@ export default function Home() {
           });
         }
 
-        // Check for suggestions in the response data
+        // Check for PDF export trigger
         const responseData = response.data as {
           suggestions?: POI[];
           formattedSuggestions?: Array<{ name: string; reason: string }>;
           isSelectableList?: boolean;
+          shouldExportPdf?: boolean;
+          itinerary?: Itinerary;
+          swapMode?: boolean;
+          swapTarget?: { dayNumber: number; timeSlot: "morning" | "afternoon" | "evening" };
         } | undefined;
+
+        // Store response data for UI components
+        setCurrentResponseData(responseData ? {
+          swapMode: responseData.swapMode,
+          swapTarget: responseData.swapTarget,
+        } : null);
+
+        // Auto-export PDF if thank you was detected
+        if (responseData?.shouldExportPdf && responseData?.itinerary) {
+          logInfo("system", "Auto-exporting PDF after thank you");
+          const { exportToPdf } = await import("@/services/pdf/exportPdf");
+          exportToPdf(responseData.itinerary);
+        }
 
         if (responseData?.isSelectableList && responseData?.formattedSuggestions) {
           // Use formatted suggestions from LLM
@@ -139,6 +158,7 @@ export default function Home() {
         } else {
           // Clear suggestions if not a suggestion response
           setSuggestions([]);
+          setCurrentResponseData(null);
         }
 
         // Set response for TTS
@@ -202,9 +222,18 @@ export default function Home() {
 
   // Handle suggestion selection
   const handleSuggestionSelect = useCallback(
-    async (suggestion: SuggestionItem, dayNumber?: number) => {
-      const day = dayNumber || 1;
-      const command = `add ${suggestion.name} to Day ${day}`;
+    async (suggestion: SuggestionItem, dayNumber?: number, timeSlot?: "morning" | "afternoon" | "evening") => {
+      let command: string;
+      if (timeSlot && dayNumber) {
+        // Swap mode
+        command = `replace the ${timeSlot} activity on Day ${dayNumber} with ${suggestion.name}`;
+      } else if (dayNumber) {
+        // Add mode with day
+        command = `add ${suggestion.name} to Day ${dayNumber}`;
+      } else {
+        // Quick add
+        command = `add ${suggestion.name}`;
+      }
       logInfo("user", `Suggestion selected: ${command}`);
       setSuggestions([]); // Clear suggestions
       await handleTranscriptComplete(command);
@@ -304,6 +333,8 @@ export default function Home() {
                     onSelect={handleSuggestionSelect}
                     availableDays={availableDays}
                     title="Suggested Places"
+                    mode={currentResponseData?.swapMode ? "swap" : "add"}
+                    swapTarget={currentResponseData?.swapTarget}
                   />
                 </div>
               )}
@@ -329,6 +360,8 @@ export default function Home() {
                 onSelect={handleSuggestionSelect}
                 availableDays={availableDays}
                 title="Suggested Places"
+                mode={currentResponseData?.swapMode ? "swap" : "add"}
+                swapTarget={currentResponseData?.swapTarget}
               />
             </div>
           )}

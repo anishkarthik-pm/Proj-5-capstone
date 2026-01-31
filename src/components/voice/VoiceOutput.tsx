@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { Play, Pause, Square, Volume2 } from "lucide-react";
+import { Play, Pause, Square, Volume2, VolumeX } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -23,24 +23,26 @@ export function VoiceOutput({
   onSpeakStart,
   onSpeakEnd,
 }: VoiceOutputProps) {
-  const { isSpeaking, setIsSpeaking, currentResponse, speakingRate, setSpeakingRate } =
+  const { isSpeaking, setIsSpeaking, currentResponse, speakingRate, setSpeakingRate, isMuted, setIsMuted } =
     useVoiceStore();
   const [isPaused, setIsPaused] = useState(false);
   const [displayText, setDisplayText] = useState("");
 
   const textToSpeak = text || currentResponse;
 
-  // Auto-speak when new response arrives
+  // Auto-speak when new response arrives (only if not muted)
   useEffect(() => {
-    if (autoSpeak && textToSpeak && textToSpeak !== displayText) {
+    if (autoSpeak && !isMuted && textToSpeak && textToSpeak !== displayText) {
       setDisplayText(textToSpeak);
       handleSpeak(textToSpeak);
+    } else if (textToSpeak && textToSpeak !== displayText) {
+      setDisplayText(textToSpeak);
     }
-  }, [textToSpeak, autoSpeak]);
+  }, [textToSpeak, autoSpeak, isMuted]);
 
   const handleSpeak = useCallback(
     (content: string) => {
-      if (!content) return;
+      if (!content || isMuted) return;
 
       speak(content, {
         rate: speakingRate,
@@ -63,7 +65,7 @@ export function VoiceOutput({
         onResume: () => setIsPaused(false),
       });
     },
-    [speakingRate, setIsSpeaking, onSpeakStart, onSpeakEnd]
+    [speakingRate, setIsSpeaking, onSpeakStart, onSpeakEnd, isMuted]
   );
 
   const handlePlayPause = useCallback(() => {
@@ -167,9 +169,30 @@ export function VoiceOutput({
           <Square className="h-4 w-4" />
         </Button>
 
+        {/* Mute/Unmute Button */}
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => {
+            setIsMuted(!isMuted);
+            if (isMuted && textToSpeak) {
+              handleSpeak(textToSpeak);
+            } else if (!isMuted && isSpeaking) {
+              stopSpeaking();
+            }
+          }}
+          className="h-9 w-9"
+          title={isMuted ? "Unmute audio" : "Mute audio"}
+        >
+          {isMuted ? (
+            <VolumeX className="h-4 w-4" />
+          ) : (
+            <Volume2 className="h-4 w-4" />
+          )}
+        </Button>
+
         {/* Speed Control */}
         <div className="flex items-center gap-2 flex-1">
-          <Volume2 className="h-4 w-4 text-muted-foreground" />
           <Slider
             value={[speakingRate]}
             onValueChange={handleRateChange}
@@ -177,6 +200,7 @@ export function VoiceOutput({
             max={1.5}
             step={0.25}
             className="flex-1 max-w-[100px]"
+            disabled={isMuted}
           />
           <span className="text-xs text-muted-foreground w-10">
             {getRateLabel(speakingRate)}

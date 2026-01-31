@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { config } from "@/lib/config";
 
 // Force Node.js runtime - Gemini SDK doesn't work in Edge
 export const runtime = "nodejs";
@@ -78,7 +79,7 @@ export async function POST(request: NextRequest) {
 
     const client = getGeminiClient();
     const model = client.getGenerativeModel({
-      model: options?.model || process.env.NEXT_PUBLIC_LLM_MODEL || "gemini-1.5-flash",
+      model: options?.model || process.env.GEMINI_MODEL || process.env.NEXT_PUBLIC_LLM_MODEL || config.llm.model,
     });
 
     const { history, userMessage } = convertMessages(messages);
@@ -113,7 +114,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       content: text,
-      model: options?.model || "gemini-1.5-flash",
+      model: options?.model || config.llm.model,
     });
   } catch (error) {
     console.error("LLM API error:", error);
@@ -149,6 +150,6 @@ export async function GET() {
   return NextResponse.json({
     status: apiKey ? "configured" : "not_configured",
     provider: "gemini",
-    model: process.env.NEXT_PUBLIC_LLM_MODEL || "gemini-1.5-flash",
+    model: process.env.GEMINI_MODEL || process.env.NEXT_PUBLIC_LLM_MODEL || config.llm.model,
   });
 }

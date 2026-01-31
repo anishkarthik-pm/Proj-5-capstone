@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { Send, Keyboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { stopSpeaking } from "@/services/tts";
 
 interface TextInputProps {
   onSubmit: (text: string) => void;
@@ -31,6 +32,8 @@ export function TextInput({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (text.trim() && !disabled) {
+      // Stop any current speech when user submits text
+      stopSpeaking();
       onSubmit(text.trim());
       setText("");
     }
@@ -60,7 +63,13 @@ export function TextInput({
         ref={inputRef}
         type="text"
         value={text}
-        onChange={(e) => setText(e.target.value)}
+        onChange={(e) => {
+          setText(e.target.value);
+          // Stop speech when user starts typing
+          if (e.target.value.length > 0) {
+            stopSpeaking();
+          }
+        }}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         disabled={disabled}

@@ -249,18 +249,17 @@ export class PlanningAgent {
     if (missingFields.length > 0 && this.state.clarificationCount < MAX_CLARIFICATIONS) {
       const nextField = missingFields[0];
 
-      // Use LLM for natural question generation
-      let question: string;
-      try {
-        question = await generateClarifyingQuestion({
-          questionType: nextField,
-          previousAnswers: this.state.preferences,
-          questionNumber: this.state.clarificationCount + 1,
-          maxQuestions: MAX_CLARIFICATIONS,
-        });
-      } catch {
-        const questionConfig = CLARIFYING_QUESTIONS.find((q) => q.key === nextField);
-        question = questionConfig?.question || "Could you tell me more?";
+      // Use hardcoded questions directly (no LLM call) to avoid hallucination and save tokens
+      const questionConfig = CLARIFYING_QUESTIONS.find((q) => q.key === nextField);
+      let question = questionConfig?.question || "Could you tell me more?";
+
+      // Add simple contextual prefix without LLM
+      if (this.state.clarificationCount === 0) {
+        question = `Great! Let me help you plan your trip. ${question}`;
+      } else if (this.state.clarificationCount === 1 && this.state.preferences.startDate) {
+        const date = this.state.preferences.startDate as Date;
+        const dateStr = date.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+        question = `Perfect, ${dateStr}. ${question}`;
       }
 
       // Track by KEY, not by question text
@@ -316,18 +315,17 @@ export class PlanningAgent {
     if (missingFields.length > 0 && this.state.clarificationCount < MAX_CLARIFICATIONS) {
       const nextField = missingFields[0];
 
-      // Use LLM for natural question generation
-      let question: string;
-      try {
-        question = await generateClarifyingQuestion({
-          questionType: nextField,
-          previousAnswers: this.state.preferences,
-          questionNumber: this.state.clarificationCount + 1,
-          maxQuestions: MAX_CLARIFICATIONS,
-        });
-      } catch {
-        const questionConfig = CLARIFYING_QUESTIONS.find((q) => q.key === nextField);
-        question = questionConfig?.question || "Could you tell me more?";
+      // Use hardcoded questions directly (no LLM call) to avoid hallucination and save tokens
+      const questionConfig = CLARIFYING_QUESTIONS.find((q) => q.key === nextField);
+      let question = questionConfig?.question || "Could you tell me more?";
+
+      // Add simple contextual prefix without LLM
+      if (this.state.preferences.startDate && nextField === "numDays") {
+        const date = this.state.preferences.startDate as Date;
+        const dateStr = date.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+        question = `Perfect, ${dateStr}. ${question}`;
+      } else if (this.state.preferences.numDays && nextField === "groupSize") {
+        question = `Great, ${this.state.preferences.numDays} days. ${question}`;
       }
 
       // Track by KEY, not by question text
@@ -744,8 +742,8 @@ export class PlanningAgent {
     const totalCost = totalActivityCost + totalTravelCost + hotelCost;
     const finalSummary = ` Estimated total: ~₹${totalCost.toLocaleString("en-IN")} (activities, transport & hotel for ${preferences.groupSize || 2} guests).`;
 
-    // Concise thank you message with export options
-    const thankYouMessage = ` Your itinerary is ready! Export via PDF/HTML buttons, or ask me to modify anything. Have a wonderful trip!`;
+    // Concise thank you message
+    const thankYouMessage = `Your itinerary is ready! Have a wonderful trip to Ooty!`;
 
     // Try LLM-powered response
     try {

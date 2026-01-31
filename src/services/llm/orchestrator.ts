@@ -192,12 +192,25 @@ export class Orchestrator {
       };
     }
 
+    // Check for "thank you" after itinerary is finalized - trigger PDF export
+    if ((/thank|thanks|thank you|appreciate/.test(text)) && this.state.context.currentItinerary) {
+      return {
+        success: true,
+        message: "You're welcome! Your itinerary PDF is being prepared.",
+        shouldSpeak: true,
+        data: {
+          shouldExportPdf: true,
+          itinerary: this.state.context.currentItinerary,
+        },
+      };
+    }
+
     // Positive confirmation
     if (this.state.context.currentItinerary) {
       return {
         success: true,
         message:
-          "Great! Your itinerary is confirmed. You can ask me to email it to you, or let me know if you'd like any changes.",
+          "Great! Your itinerary is confirmed. Let me know if you'd like any changes.",
         shouldSpeak: true,
       };
     }

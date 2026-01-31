@@ -12,6 +12,7 @@ interface VoiceStore {
   history: VoiceHistoryEntry[];
   currentResponse: string;
   speakingRate: number;
+  isMuted: boolean;
 
   // Actions
   setStatus: (status: VoiceStatus) => void;
@@ -22,6 +23,7 @@ interface VoiceStore {
   setError: (error: string | null) => void;
   setCurrentResponse: (response: string) => void;
   setSpeakingRate: (rate: number) => void;
+  setIsMuted: (isMuted: boolean) => void;
   addToHistory: (text: string, isUser: boolean) => void;
   clearHistory: () => void;
   reset: () => void;
@@ -37,6 +39,7 @@ const initialState = {
   history: [] as VoiceHistoryEntry[],
   currentResponse: "",
   speakingRate: 1.0,
+  isMuted: false,
 };
 
 export const useVoiceStore = create<VoiceStore>((set) => ({
@@ -69,6 +72,8 @@ export const useVoiceStore = create<VoiceStore>((set) => ({
   setCurrentResponse: (currentResponse) => set({ currentResponse }),
 
   setSpeakingRate: (speakingRate) => set({ speakingRate }),
+
+  setIsMuted: (isMuted) => set({ isMuted }),
 
   addToHistory: (text, isUser) =>
     set((state) => ({

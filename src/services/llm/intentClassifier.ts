@@ -77,6 +77,11 @@ const QUERY_KEYWORDS = [
   "information",
   "what about",
   "know about",
+  "talk about",
+  "tell me about",
+  "explain this",
+  "explain that",
+  "explain the",
 ];
 
 const CONFIRM_KEYWORDS = [

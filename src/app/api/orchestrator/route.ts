@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { orchestrator } from "@/services/llm/orchestrator";
+import { config } from "@/lib/config";
 
 // Force Node.js runtime - LLM services don't work in Edge
 export const runtime = "nodejs";
@@ -101,7 +102,7 @@ export async function GET() {
   return NextResponse.json({
     status: "ok",
     hasApiKey: !!process.env.GOOGLE_API_KEY,
-    model: process.env.NEXT_PUBLIC_LLM_MODEL || "gemini-1.5-flash",
+    model: process.env.GEMINI_MODEL || process.env.NEXT_PUBLIC_LLM_MODEL || config.llm.model,
     runtime: "nodejs",
   });
 }

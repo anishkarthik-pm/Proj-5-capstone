@@ -86,13 +86,17 @@ export class QueryAgent {
    * Check if this is an information question about a specific place
    */
   private isInfoQuestion(text: string): boolean {
-    // Check for general info patterns
-    if (/what's special|tell me about|more about|details|how long|what is|where is|explain|describe/.test(text)) {
+    // Check for general info patterns - expanded to catch more variations
+    if (/what's special|tell me about|more about|details|how long|what is|where is|explain|describe|talk about|tell about|info on|information on/.test(text)) {
       return true;
     }
     // Check if user is asking about a specific place by just mentioning it
     // This catches patterns like "Botanical Garden?" or "what about Rose Garden"
-    if (/what about|about the|the .+ garden|the .+ lake|the .+ museum|the .+ point|the .+ falls/.test(text)) {
+    if (/what about|about the|the .+ garden|the .+ lake|the .+ museum|the .+ point|the .+ falls|the .+ peak|the .+ dam/.test(text)) {
+      return true;
+    }
+    // Catch "explain [spot name]" patterns
+    if (/^explain\s+(?:this\s+)?(?:spot|place|location|attraction)/i.test(text) || /explain\s+[A-Z][a-z]+/i.test(text)) {
       return true;
     }
     return false;

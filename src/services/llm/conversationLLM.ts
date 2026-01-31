@@ -372,7 +372,14 @@ export async function generateConfirmationMessage(params: {
   const weatherNote = `Weather: ${weatherInfo.condition}, around ${weatherInfo.temperature}°C`;
   sections.push(weatherNote);
 
-  return `Here's your trip summary:\n\n${sections.join("\n")}\n\nShall I create your personalized itinerary? Say yes to proceed, or tell me what you'd like to change.`;
+  // Concise summary - only essential info
+  const essentialSections = [
+    sections[0], // Trip dates
+    sections[1], // Guests and rooms
+    sections[2], // Transport (if available)
+  ].filter(Boolean);
+
+  return `Trip summary: ${essentialSections.join(", ")}. Ready to create your itinerary? Say yes to proceed.`;
 }
 
 /**
@@ -537,6 +544,12 @@ Trip Details:
     `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`
   ).join("\n") || "";
 
+  // Check if user is asking about a specific place
+  const isAskingAboutPlace = /explain|tell.*about|talk.*about|what.*about|describe|info.*about|more.*about|details.*about/i.test(userText);
+  const placeInQuestion = currentItinerary ? 
+    currentItinerary.days.flatMap(d => d.blocks.map(b => b.poi.name))
+      .find(name => userText.toLowerCase().includes(name.toLowerCase().split(/\s+/)[0])) : null;
+
   const prompt = `You are a friendly Ooty travel planning assistant. The user said something you need to respond to helpfully.
 
 ${screenContext}
@@ -544,22 +557,21 @@ ${screenContext}
 ${recentHistory ? `RECENT CONVERSATION:\n${recentHistory}\n` : ""}
 
 USER JUST SAID: "${userText}"
+${isAskingAboutPlace && placeInQuestion ? `\nNOTE: User is asking about "${placeInQuestion}" - provide specific information about this place.` : ""}
 
 Generate a helpful response that:
-1. If they have an itinerary: Briefly describe what's shown (days, key places) and explain how they can modify it
+${isAskingAboutPlace && placeInQuestion ? 
+  `1. Provide specific information about ${placeInQuestion} from their itinerary
+2. Explain what makes it special, what to expect, and why it's in their plan
+3. Be informative and detailed (3-4 sentences)` :
+  `1. If they have an itinerary: Briefly acknowledge their request and guide them
 2. If no itinerary: Guide them on how to start planning
 3. Answer any question they might have based on context
-4. Be specific about what commands/requests work:
-   - "Add [place] to Day [X]" - adds a new activity
-   - "Remove [place]" - removes an activity
-   - "Replace [place] with something else" - swaps activities
-   - "Swap Day 1 and Day 2" - reorder days
-   - "Tell me about [place]" - get info
-   - "Why did you pick [place]?" - get reasoning
+4. Be specific and helpful`}
 
-${currentItinerary ? `Their itinerary has ${currentItinerary.days.length} days. Mention 2-3 specific places from their plan.` : ""}
+${currentItinerary && !isAskingAboutPlace ? `Their itinerary has ${currentItinerary.days.length} days.` : ""}
 
-Be conversational, helpful, and specific. Keep response to 2-3 sentences. No emojis.`;
+Be conversational, helpful, and specific. ${isAskingAboutPlace ? "Provide detailed information." : "Keep response concise (2-3 sentences)."} No emojis.`;
 
   try {
     const result = await generateCompletion([{ role: "user", content: prompt }]);
@@ -572,7 +584,8 @@ Be conversational, helpful, and specific. Keep response to 2-3 sentences. No emo
 function generateFallbackHelp(itinerary: Itinerary | null): string {
   if (itinerary) {
     const places = itinerary.days.flatMap(d => d.blocks.map(b => b.poi.name)).slice(0, 3).join(", ");
-    return `Your itinerary includes ${places} and more. You can ask me to add, remove, or replace activities, swap days around, or ask about any place. What would you like to do?`;
+    // More concise - don't list all options
+    return `Your itinerary includes ${places} and more. What would you like to know or change?`;
   }
   return "I can help you plan a trip to Ooty. Just say something like 'Plan a 3-day trip' or ask me about places to visit in Ooty.";
 }

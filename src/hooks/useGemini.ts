@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useDebugStore } from "@/lib/stores/debugStore";
+import { config } from "@/lib/config";
 
 export interface Message {
   role: "user" | "assistant" | "system";
@@ -60,7 +61,7 @@ export function useGemini(): UseGeminiReturn {
 
       const startTime = Date.now();
       logInfo("llm", `Generating response (${messages.length} messages)`, {
-        model: options?.model || "gemini-1.5-flash",
+        model: options?.model || config.llm.model,
       });
 
       try {

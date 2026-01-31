@@ -1,6 +1,7 @@
 import { generateCompletion } from "./geminiProvider";
 import type { Itinerary } from "@/types";
 import { useDebugStore } from "@/lib/stores/debugStore";
+import { config } from "@/lib/config";
 
 type LLMMessage = { role: "user" | "assistant" | "system"; content: string };
 
@@ -192,7 +193,7 @@ export async function validateApiKey(): Promise<{
       return {
         valid: true,
         message: "API key is working",
-        model: process.env.NEXT_PUBLIC_LLM_MODEL || "gemini-1.5-flash",
+        model: process.env.GEMINI_MODEL || process.env.NEXT_PUBLIC_LLM_MODEL || config.llm.model,
       };
     }
 
@@ -206,7 +207,7 @@ export async function validateApiKey(): Promise<{
     return {
       valid: true,
       message: "API connected but response was unexpected",
-      model: process.env.NEXT_PUBLIC_LLM_MODEL || "gemini-1.5-flash",
+      model: process.env.GEMINI_MODEL || process.env.NEXT_PUBLIC_LLM_MODEL || config.llm.model,
     };
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
