@@ -226,6 +226,13 @@ export class EditAgent {
   }
 
   /**
+   * Check if there's a pending modification awaiting user response
+   */
+  hasPendingModification(): boolean {
+    return this.pendingModification !== null;
+  }
+
+  /**
    * Parse the user's edit request into an operation using LLM
    */
   private async parseEditOperation(

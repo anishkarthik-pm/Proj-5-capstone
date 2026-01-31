@@ -52,6 +52,20 @@ export class Orchestrator {
       return this.handleClarificationAnswer(transcript);
     }
 
+    // Check if editAgent has a pending modification (two-step flow)
+    // This takes priority over intent classification
+    if (editAgent.hasPendingModification() && this.state.context.currentItinerary) {
+      const intent: VoiceIntent = {
+        type: "edit",
+        rawText: transcript,
+        confidence: 1.0,
+      };
+      this.state.lastIntent = intent;
+      const response = await this.handleEditIntent(intent);
+      this.addMessage("assistant", response.message, intent, response.sources);
+      return response;
+    }
+
     // Classify the intent
     const intent = await classifyIntent(
       transcript,

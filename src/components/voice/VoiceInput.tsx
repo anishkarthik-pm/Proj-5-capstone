@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { useVoiceStore } from "@/lib/stores/voiceStore";
+import { stopSpeaking } from "@/services/tts";
 
 interface VoiceInputProps {
   onTranscriptComplete?: (transcript: string) => void;
@@ -54,9 +55,9 @@ export function VoiceInput({
         e.preventDefault();
         spacePressed = true;
 
-        // Stop speaking if currently speaking
+        // Stop speaking if currently speaking (use TTS service to maintain state)
         if (isSpeaking) {
-          window.speechSynthesis?.cancel();
+          stopSpeaking();
         }
 
         startListening();
@@ -95,9 +96,9 @@ export function VoiceInput({
     if (isListening) {
       stopListening();
     } else {
-      // Stop speaking if currently speaking
+      // Stop speaking if currently speaking (use TTS service to maintain state)
       if (isSpeaking) {
-        window.speechSynthesis?.cancel();
+        stopSpeaking();
       }
       resetTranscript();
       startListening();

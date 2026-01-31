@@ -718,7 +718,6 @@ export class PlanningAgent {
     const { days, preferences } = itinerary;
 
     // Calculate total travel cost
-    const totalDistanceKm = days.reduce((sum, d) => sum + (d.totalDistanceKm || 0), 0);
     const totalTravelCost = days.reduce((sum, d) => sum + (d.travelCostInr || 0), 0);
 
     // Calculate activity cost
@@ -741,30 +740,12 @@ export class PlanningAgent {
       }
     }
 
-    // Build final summary
-    const finalSummary = `
+    // Build concise final summary
+    const totalCost = totalActivityCost + totalTravelCost + hotelCost;
+    const finalSummary = ` Estimated total: ~₹${totalCost.toLocaleString("en-IN")} (activities, transport & hotel for ${preferences.groupSize || 2} guests).`;
 
-TRIP SUMMARY:
-- ${preferences.numDays} days, ${days.reduce((s, d) => s + d.blocks.length, 0)} activities
-- ${preferences.groupSize || 2} guests, ${roomsNeeded} ${preferences.hotelCategory || "4-star"} room${roomsNeeded > 1 ? "s" : ""}
-- Vehicle: ${preferences.vehicleType || "sedan"} (${Math.round(totalDistanceKm)} km total)
-
-ESTIMATED COSTS:
-- Activities: ~₹${totalActivityCost.toLocaleString("en-IN")}
-- Transport: ~₹${totalTravelCost.toLocaleString("en-IN")}
-- Hotel: ~₹${hotelCost.toLocaleString("en-IN")}
-- Total: ~₹${(totalActivityCost + totalTravelCost + hotelCost).toLocaleString("en-IN")} (excluding food)`;
-
-    // Thank you message with export options
-    const thankYouMessage = `
-
-Thank you for planning your Ooty trip with me! Your itinerary is ready on the left. You can:
-- Click "PDF" to download and print your itinerary
-- Click "HTML" to save it as a web page
-- Ask me to modify any activity or add new places
-- Ask about any specific spot to know more details
-
-Have a wonderful trip to the Queen of Hill Stations!`;
+    // Concise thank you message with export options
+    const thankYouMessage = ` Your itinerary is ready! Export via PDF/HTML buttons, or ask me to modify anything. Have a wonderful trip!`;
 
     // Try LLM-powered response
     try {

@@ -36,8 +36,36 @@ export class QueryAgent {
       return this.handleFeasibilityQuestion(intent, context);
     }
 
+    // Check if user is mentioning a place name from the itinerary
+    if (this.mentionsItinerarySpot(text, context)) {
+      return this.handleInfoQuestion(intent, context);
+    }
+
     // General query - use RAG
     return this.handleGeneralQuery(intent, context);
+  }
+
+  /**
+   * Check if user mentions any spot from current itinerary
+   */
+  private mentionsItinerarySpot(text: string, context: ConversationContext): boolean {
+    const { currentItinerary } = context;
+    if (!currentItinerary) return false;
+
+    for (const day of currentItinerary.days) {
+      for (const block of day.blocks) {
+        const poiNameLower = block.poi.name.toLowerCase();
+        const poiWords = poiNameLower.split(/\s+/);
+        // Check if any significant word from POI name is in the user text
+        const hasMatch = poiWords.some(pw =>
+          pw.length > 3 && text.includes(pw)
+        );
+        if (hasMatch || text.includes(poiNameLower)) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   /**

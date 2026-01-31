@@ -97,7 +97,9 @@ export function VoiceOutput({
   );
 
   const getRateLabel = (rate: number) => {
+    if (rate <= 0.5) return "0.5x";
     if (rate <= 0.75) return "0.75x";
+    if (rate >= 1.5) return "1.5x";
     if (rate >= 1.25) return "1.25x";
     return "1x";
   };

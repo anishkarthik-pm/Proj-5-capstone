@@ -70,6 +70,13 @@ const QUERY_KEYWORDS = [
   "opinion",
   "doable",
   "feasible",
+  "about the",
+  "about this",
+  "describe",
+  "info about",
+  "information",
+  "what about",
+  "know about",
 ];
 
 const CONFIRM_KEYWORDS = [
