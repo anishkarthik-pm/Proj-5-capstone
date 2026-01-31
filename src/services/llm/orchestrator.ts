@@ -63,6 +63,13 @@ export class Orchestrator {
       this.state.lastIntent = intent;
       const response = await this.handleEditIntent(intent);
       this.addMessage("assistant", response.message, intent, response.sources);
+
+      // Update itinerary if returned from edit operation
+      const editData = response.data as { itinerary?: Itinerary } | undefined;
+      if (editData?.itinerary) {
+        this.state.context.currentItinerary = editData.itinerary;
+      }
+
       return response;
     }
 

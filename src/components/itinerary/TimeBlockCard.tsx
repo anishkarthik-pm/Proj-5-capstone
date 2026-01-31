@@ -22,9 +22,10 @@ interface TimeBlockCardProps {
   className?: string;
   onEdit?: () => void;
   isFood?: boolean; // Different styling for food/restaurant spots
+  spotNumber?: number; // Spot number for easy reference (1, 2, 3...)
 }
 
-export function TimeBlockCard({ block, className, onEdit, isFood }: TimeBlockCardProps) {
+export function TimeBlockCard({ block, className, onEdit, isFood, spotNumber }: TimeBlockCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const { highlightedBlocks } = useUIStore();
   const isHighlighted = highlightedBlocks.includes(block.id);
@@ -102,8 +103,13 @@ export function TimeBlockCard({ block, className, onEdit, isFood }: TimeBlockCar
               </span>
             </div>
 
-            {/* POI Name */}
+            {/* POI Name with Spot Number */}
             <h4 className="font-semibold text-lg flex items-center gap-2">
+              {spotNumber && (
+                <span className="flex items-center justify-center w-6 h-6 bg-primary text-primary-foreground rounded-full text-sm font-bold flex-shrink-0">
+                  {spotNumber}
+                </span>
+              )}
               <MapPin className="w-4 h-4 text-primary flex-shrink-0" />
               {poi.name}
             </h4>

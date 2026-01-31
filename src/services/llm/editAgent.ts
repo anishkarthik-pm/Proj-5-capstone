@@ -361,6 +361,60 @@ export class EditAgent {
   }
 
   /**
+   * Extract spot number from text (e.g., "spot 2", "number 3", "2nd spot")
+   */
+  private extractSpotNumber(text: string): number | undefined {
+    // Match patterns like "spot 2", "number 3", "#2", "2nd", "second"
+    const patterns = [
+      /spot\s*(\d+)/i,
+      /number\s*(\d+)/i,
+      /#(\d+)/,
+      /(\d+)(?:st|nd|rd|th)\s*(?:spot|place|activity)?/i,
+      /\b(\d+)\b/,  // Plain number as fallback
+    ];
+    const ordinalMap: Record<string, number> = {
+      first: 1, second: 2, third: 3, fourth: 4, fifth: 5,
+      sixth: 6, seventh: 7, eighth: 8, ninth: 9, tenth: 10
+    };
+
+    // Check ordinal words first
+    for (const [word, num] of Object.entries(ordinalMap)) {
+      if (text.includes(word)) return num;
+    }
+
+    // Check patterns
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (match && match[1]) {
+        const num = parseInt(match[1], 10);
+        if (num > 0 && num <= 20) return num;
+      }
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Find block by spot number (1-indexed, counting all blocks in order)
+   */
+  private findBlockBySpotNumber(day: DayPlan, spotNumber: number): TimeBlock | undefined {
+    // Get all blocks in the same order as displayed (tourist spots first, then restaurants)
+    const isFoodSpot = (block: TimeBlock) =>
+      block.poi.category.some(c =>
+        c.toLowerCase().includes("food") ||
+        c.toLowerCase().includes("restaurant") ||
+        c.toLowerCase().includes("cafe") ||
+        c.toLowerCase().includes("dining")
+      );
+
+    const touristSpots = day.blocks.filter(b => !isFoodSpot(b));
+    const restaurants = day.blocks.filter(b => isFoodSpot(b));
+    const orderedBlocks = [...touristSpots, ...restaurants];
+
+    return orderedBlocks[spotNumber - 1]; // Convert to 0-indexed
+  }
+
+  /**
    * Create a remove operation
    */
   private createRemoveOperation(
@@ -372,13 +426,25 @@ export class EditAgent {
     // Find the block to remove
     let blockId: string | undefined;
 
-    if (timeSlot) {
+    // First, try to find by spot number
+    const spotNumber = this.extractSpotNumber(text);
+    if (spotNumber) {
+      const block = this.findBlockBySpotNumber(day, spotNumber);
+      if (block) {
+        blockId = block.id;
+      }
+    }
+
+    // Then try by time slot
+    if (!blockId && timeSlot) {
       const block = day.blocks.find((b) => b.timeSlot === timeSlot);
       if (block) {
         blockId = block.id;
       }
-    } else {
-      // Try to find by POI name
+    }
+
+    // Then try to find by POI name
+    if (!blockId) {
       for (const block of day.blocks) {
         if (text.includes(block.poi.name.toLowerCase())) {
           blockId = block.id;
@@ -523,20 +589,30 @@ export class EditAgent {
     // Find which block to replace
     let blockToReplace: TimeBlock | undefined;
 
-    if (timeSlot) {
+    // First, try to find by spot number
+    const spotNumber = this.extractSpotNumber(text);
+    if (spotNumber) {
+      blockToReplace = this.findBlockBySpotNumber(day, spotNumber);
+    }
+
+    // Then try by time slot
+    if (!blockToReplace && timeSlot) {
       blockToReplace = day.blocks.find((b) => b.timeSlot === timeSlot);
-    } else {
-      // Try to find by name
+    }
+
+    // Try to find by name
+    if (!blockToReplace) {
       for (const block of day.blocks) {
         if (text.includes(block.poi.name.toLowerCase())) {
           blockToReplace = block;
           break;
         }
       }
-      // Default to first block
-      if (!blockToReplace) {
-        blockToReplace = day.blocks[0];
-      }
+    }
+
+    // Default to first block
+    if (!blockToReplace) {
+      blockToReplace = day.blocks[0];
     }
 
     if (!blockToReplace) return null;
@@ -594,10 +670,19 @@ export class EditAgent {
     // Find which block user wants to replace (if specified)
     let blockToReplace: TimeBlock | undefined;
 
-    if (timeSlot) {
+    // First, try to find by spot number
+    const spotNumber = this.extractSpotNumber(text);
+    if (spotNumber) {
+      blockToReplace = this.findBlockBySpotNumber(day, spotNumber);
+    }
+
+    // Then try by time slot
+    if (!blockToReplace && timeSlot) {
       blockToReplace = day.blocks.find((b) => b.timeSlot === timeSlot);
-    } else {
-      // Try to find by name
+    }
+
+    // Try to find by name
+    if (!blockToReplace) {
       for (const block of day.blocks) {
         if (text.includes(block.poi.name.toLowerCase())) {
           blockToReplace = block;

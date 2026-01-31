@@ -136,10 +136,11 @@ export function DayCard({ day, className }: DayCardProps) {
         </div>
       )}
 
-      {/* Separate tourist spots and restaurants */}
+      {/* Separate tourist spots and restaurants with numbering */}
       {(() => {
         const touristSpots = day.blocks.filter((b) => !isFoodSpot(b));
         const restaurants = day.blocks.filter((b) => isFoodSpot(b));
+        let spotCounter = 1; // Global counter for all spots in the day
 
         return (
           <>
@@ -150,14 +151,17 @@ export function DayCard({ day, className }: DayCardProps) {
                   <Mountain className="w-4 h-4" />
                   <span>Tourist Spots ({touristSpots.length})</span>
                 </div>
-                {touristSpots.map((block, index) => (
-                  <React.Fragment key={block.id}>
-                    {index > 0 && block.travelTimeFromPrev > 0 && (
-                      <TravelSegment travelTime={block.travelTimeFromPrev} />
-                    )}
-                    <TimeBlockCard block={block} />
-                  </React.Fragment>
-                ))}
+                {touristSpots.map((block, index) => {
+                  const currentSpotNumber = spotCounter++;
+                  return (
+                    <React.Fragment key={block.id}>
+                      {index > 0 && block.travelTimeFromPrev > 0 && (
+                        <TravelSegment travelTime={block.travelTimeFromPrev} />
+                      )}
+                      <TimeBlockCard block={block} spotNumber={currentSpotNumber} />
+                    </React.Fragment>
+                  );
+                })}
               </div>
             )}
 
@@ -168,9 +172,12 @@ export function DayCard({ day, className }: DayCardProps) {
                   <UtensilsCrossed className="w-4 h-4" />
                   <span>Restaurants & Cafes ({restaurants.length})</span>
                 </div>
-                {restaurants.map((block) => (
-                  <TimeBlockCard key={block.id} block={block} isFood />
-                ))}
+                {restaurants.map((block) => {
+                  const currentSpotNumber = spotCounter++;
+                  return (
+                    <TimeBlockCard key={block.id} block={block} isFood spotNumber={currentSpotNumber} />
+                  );
+                })}
               </div>
             )}
           </>
