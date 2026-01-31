@@ -240,6 +240,26 @@ export default function Home() {
     [handleTranscriptComplete, logInfo]
   );
 
+  // Handle replace spot (triggered by replace icon)
+  const handleReplaceSpot = useCallback(
+    async (spotNumber: number, spotName: string) => {
+      const command = `replace spot ${spotNumber}`;
+      logInfo("user", `Replace icon clicked: ${command} (${spotName})`);
+      await handleTranscriptComplete(command);
+    },
+    [handleTranscriptComplete, logInfo]
+  );
+
+  // Handle info spot (triggered by info icon)
+  const handleInfoSpot = useCallback(
+    async (spotNumber: number, spotName: string) => {
+      const command = `tell me about ${spotName} in 2 lines`;
+      logInfo("user", `Info icon clicked: ${command}`);
+      await handleTranscriptComplete(command);
+    },
+    [handleTranscriptComplete, logInfo]
+  );
+
   // Get available days for suggestions
   const availableDays = itinerary?.days.map(d => d.dayNumber) || [1, 2, 3];
 
@@ -300,7 +320,11 @@ export default function Home() {
         <div className="hidden md:flex flex-1">
           {/* Itinerary Panel (70%) */}
           <div className="w-[70%] border-r overflow-hidden flex flex-col">
-            <ItineraryView className="flex-1" />
+            <ItineraryView
+              className="flex-1"
+              onReplaceSpot={handleReplaceSpot}
+              onInfoSpot={handleInfoSpot}
+            />
           </div>
 
           {/* Voice Panel (30%) */}
@@ -348,7 +372,10 @@ export default function Home() {
         <div className="flex md:hidden flex-col flex-1">
           {/* Itinerary */}
           <div className="flex-1 overflow-hidden">
-            <ItineraryView />
+            <ItineraryView
+              onReplaceSpot={handleReplaceSpot}
+              onInfoSpot={handleInfoSpot}
+            />
           </div>
 
           {/* Suggestions (mobile) */}

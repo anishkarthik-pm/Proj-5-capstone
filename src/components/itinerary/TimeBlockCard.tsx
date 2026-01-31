@@ -11,6 +11,8 @@ import {
   Sun,
   Sunset,
   Moon,
+  RefreshCw,
+  Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -21,11 +23,13 @@ interface TimeBlockCardProps {
   block: TimeBlock;
   className?: string;
   onEdit?: () => void;
+  onReplace?: (spotNumber: number, spotName: string) => void; // Trigger replacement flow
+  onInfo?: (spotNumber: number, spotName: string) => void; // Trigger info summary
   isFood?: boolean; // Different styling for food/restaurant spots
   spotNumber?: number; // Spot number for easy reference (1, 2, 3...)
 }
 
-export function TimeBlockCard({ block, className, onEdit, isFood, spotNumber }: TimeBlockCardProps) {
+export function TimeBlockCard({ block, className, onEdit, onReplace, onInfo, isFood, spotNumber }: TimeBlockCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const { highlightedBlocks } = useUIStore();
   const isHighlighted = highlightedBlocks.includes(block.id);
@@ -134,6 +138,30 @@ export function TimeBlockCard({ block, className, onEdit, isFood, spotNumber }: 
 
           {/* Actions */}
           <div className="flex items-center gap-1">
+            {/* Info Icon - shows AI summary */}
+            {onInfo && spotNumber && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                onClick={() => onInfo(spotNumber, poi.name)}
+                title="Get AI summary"
+              >
+                <Info className="w-4 h-4" />
+              </Button>
+            )}
+            {/* Replace Icon - triggers replacement options */}
+            {onReplace && spotNumber && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-orange-500 hover:text-orange-700 hover:bg-orange-50"
+                onClick={() => onReplace(spotNumber, poi.name)}
+                title="Replace this spot"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </Button>
+            )}
             {onEdit && (
               <Button
                 variant="ghost"

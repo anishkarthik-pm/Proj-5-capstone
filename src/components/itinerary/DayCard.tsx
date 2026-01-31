@@ -40,9 +40,11 @@ function WeatherIcon({ condition }: { condition?: string }) {
 interface DayCardProps {
   day: DayPlan;
   className?: string;
+  onReplaceSpot?: (spotNumber: number, spotName: string) => void;
+  onInfoSpot?: (spotNumber: number, spotName: string) => void;
 }
 
-export function DayCard({ day, className }: DayCardProps) {
+export function DayCard({ day, className, onReplaceSpot, onInfoSpot }: DayCardProps) {
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString("en-IN", {
       weekday: "long",
@@ -158,7 +160,12 @@ export function DayCard({ day, className }: DayCardProps) {
                       {index > 0 && block.travelTimeFromPrev > 0 && (
                         <TravelSegment travelTime={block.travelTimeFromPrev} />
                       )}
-                      <TimeBlockCard block={block} spotNumber={currentSpotNumber} />
+                      <TimeBlockCard
+                        block={block}
+                        spotNumber={currentSpotNumber}
+                        onReplace={onReplaceSpot}
+                        onInfo={onInfoSpot}
+                      />
                     </React.Fragment>
                   );
                 })}
@@ -175,7 +182,14 @@ export function DayCard({ day, className }: DayCardProps) {
                 {restaurants.map((block) => {
                   const currentSpotNumber = spotCounter++;
                   return (
-                    <TimeBlockCard key={block.id} block={block} isFood spotNumber={currentSpotNumber} />
+                    <TimeBlockCard
+                      key={block.id}
+                      block={block}
+                      isFood
+                      spotNumber={currentSpotNumber}
+                      onReplace={onReplaceSpot}
+                      onInfo={onInfoSpot}
+                    />
                   );
                 })}
               </div>

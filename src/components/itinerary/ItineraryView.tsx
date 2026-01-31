@@ -12,9 +12,11 @@ import { VEHICLE_RATES } from "@/services/mcp/travelCostCalculator";
 
 interface ItineraryViewProps {
   className?: string;
+  onReplaceSpot?: (spotNumber: number, spotName: string) => void;
+  onInfoSpot?: (spotNumber: number, spotName: string) => void;
 }
 
-export function ItineraryView({ className }: ItineraryViewProps) {
+export function ItineraryView({ className, onReplaceSpot, onInfoSpot }: ItineraryViewProps) {
   const { itinerary, isLoading } = useTripStore();
   const { activeDay, setActiveDay } = useUIStore();
   const [showSources, setShowSources] = useState(false);
@@ -232,7 +234,11 @@ export function ItineraryView({ className }: ItineraryViewProps) {
               activeDay === day.dayNumber ? "opacity-100" : "hidden"
             )}
           >
-            <DayCard day={day} />
+            <DayCard
+              day={day}
+              onReplaceSpot={onReplaceSpot}
+              onInfoSpot={onInfoSpot}
+            />
           </div>
         ))}
       </div>
