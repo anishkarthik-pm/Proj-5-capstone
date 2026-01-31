@@ -4,9 +4,8 @@ export const config: AppConfig = {
   llm: {
     provider: (process.env.NEXT_PUBLIC_LLM_PROVIDER as "openai" | "anthropic" | "gemini") || "gemini",
     // Model can be set via GEMINI_MODEL or NEXT_PUBLIC_LLM_MODEL
-    // Default to gemini-2.5-flash-lite (good balance of speed and quality)
-    // Other available models: gemini-2.5-flash, gemini-3-flash, gemini-2.5-flash-tts
-    model: process.env.GEMINI_MODEL || process.env.NEXT_PUBLIC_LLM_MODEL || "gemini-2.5-flash-lite",
+    // Available models: gemini-2.0-flash (recommended), gemini-1.5-flash, gemini-1.5-pro
+    model: process.env.GEMINI_MODEL || process.env.NEXT_PUBLIC_LLM_MODEL || "gemini-2.0-flash",
     apiKey: process.env.GOOGLE_API_KEY || "",
   },
   voice: {

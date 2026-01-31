@@ -49,7 +49,7 @@ export async function GET() {
     // Check if model is not found - try fallback model
     if (errorMessage.includes("404") && errorMessage.includes("not found")) {
       // Try with available models in order of preference
-      const fallbackModels = ["gemini-2.5-flash-lite", "gemini-3-flash", "gemini-2.5-flash"];
+      const fallbackModels = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
 
       for (const fallbackModel of fallbackModels) {
         try {
@@ -78,7 +78,7 @@ export async function GET() {
       // All fallbacks failed, return original error
       return NextResponse.json({
         valid: false,
-        message: `Model '${model}' not found. Available models: gemini-2.5-flash-lite, gemini-3-flash, gemini-2.5-flash`,
+        message: `Model '${model}' not found. Available models: gemini-2.0-flash, gemini-1.5-flash, gemini-1.5-pro`,
         model,
         error: errorMessage.slice(0, 100),
       });

@@ -39,8 +39,8 @@ export function initializeGemini(apiKey?: string): boolean {
 
   try {
     geminiClient = new GoogleGenerativeAI(key);
-    // Use config model or fallback to gemini-2.5-flash-lite
-    const modelName = config.llm.model || "gemini-2.5-flash-lite";
+    // Use config model or fallback to gemini-2.0-flash (stable and fast)
+    const modelName = config.llm.model || "gemini-2.0-flash";
     console.log(`Initializing Gemini with model: ${modelName}`);
     geminiModel = geminiClient.getGenerativeModel({
       model: modelName
