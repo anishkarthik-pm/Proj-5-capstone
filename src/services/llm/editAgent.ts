@@ -398,7 +398,7 @@ export class EditAgent {
   }
 
   /**
-   * Create an add operation
+   * Create an add operation - works for both tourist spots and restaurants
    */
   private async createAddOperation(
     dayNumber: number,
@@ -415,11 +415,12 @@ export class EditAgent {
     const searchTerms: string[] = [];
 
     if (/tea|garden|factory/.test(text)) searchTerms.push("tea");
-    if (/restaurant|food|eat|lunch|dinner/.test(text)) searchTerms.push("food");
+    if (/restaurant|food|eat|lunch|dinner|breakfast|cafe|snack/.test(text)) searchTerms.push("food");
     if (/church|museum|heritage/.test(text)) searchTerms.push("culture");
-    if (/view|scenic|peak|point/.test(text)) searchTerms.push("nature");
-    if (/chocolate/.test(text)) searchTerms.push("shopping");
+    if (/view|scenic|peak|point|viewpoint/.test(text)) searchTerms.push("nature");
+    if (/chocolate|shop/.test(text)) searchTerms.push("shopping");
     if (/lake|boat/.test(text)) searchTerms.push("boating");
+    if (/trek|hike|adventure/.test(text)) searchTerms.push("adventure");
 
     // Default to the user's existing interests if no specific request
     const interests =
@@ -572,6 +573,7 @@ export class EditAgent {
 
   /**
    * Create a replace operation that shows options first (two-step flow)
+   * Works for both tourist spots and restaurants
    */
   private async createReplaceWithOptionsOperation(
     dayNumber: number,
@@ -602,9 +604,29 @@ export class EditAgent {
       .flatMap((d) => d.blocks)
       .map((b) => b.poi.id);
 
+    // Determine what type of replacement to search for
+    let interests = itinerary.preferences.interests || ["nature"];
+
+    // Check if replacing a food spot - search for other food spots
+    const isReplacingFood = blockToReplace?.poi.category.some(c =>
+      c.toLowerCase().includes("food") ||
+      c.toLowerCase().includes("restaurant") ||
+      c.toLowerCase().includes("cafe")
+    );
+
+    // Check if user specifically wants food replacement
+    const wantsFood = /restaurant|food|eat|lunch|dinner|breakfast|cafe|snack/.test(text);
+    const wantsTourist = /tourist|spot|place|view|garden|museum|attraction/.test(text);
+
+    if (isReplacingFood || wantsFood) {
+      interests = ["food", "restaurant", "cafe"];
+    } else if (wantsTourist) {
+      interests = ["nature", "culture", "adventure"];
+    }
+
     const result = await searchPOIs({
       city: "ooty",
-      interests: itinerary.preferences.interests || ["nature"],
+      interests,
       pace: itinerary.preferences.pace,
       excludeIds: existingPOIIds,
       maxResults: 5,

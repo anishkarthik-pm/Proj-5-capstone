@@ -55,12 +55,19 @@ export class QueryAgent {
   }
 
   /**
-   * Check if this is an information question
+   * Check if this is an information question about a specific place
    */
   private isInfoQuestion(text: string): boolean {
-    return /what's special|tell me about|more about|details|how long|what is|where is/.test(
-      text
-    );
+    // Check for general info patterns
+    if (/what's special|tell me about|more about|details|how long|what is|where is|explain|describe/.test(text)) {
+      return true;
+    }
+    // Check if user is asking about a specific place by just mentioning it
+    // This catches patterns like "Botanical Garden?" or "what about Rose Garden"
+    if (/what about|about the|the .+ garden|the .+ lake|the .+ museum|the .+ point|the .+ falls/.test(text)) {
+      return true;
+    }
+    return false;
   }
 
   /**
@@ -184,6 +191,7 @@ Tips: ${poi.tips.join(". ")}`;
 
   /**
    * Handle information questions about specific places - uses LLM
+   * Provides comprehensive details about what's on screen
    */
   private async handleInfoQuestion(
     intent: VoiceIntent,
@@ -194,23 +202,49 @@ Tips: ${poi.tips.join(". ")}`;
 
     let infoContext = "";
     let sources: AgentResponse["sources"] = [];
+    let foundInItinerary = false;
 
-    // Try to find the POI in the itinerary
+    // Try to find the POI in the itinerary - be more flexible with matching
     if (currentItinerary) {
       for (const day of currentItinerary.days) {
         for (const block of day.blocks) {
-          if (text.includes(block.poi.name.toLowerCase())) {
+          const poiNameLower = block.poi.name.toLowerCase();
+          // More flexible matching - partial name match
+          const poiWords = poiNameLower.split(/\s+/);
+          const textWords = text.split(/\s+/);
+          const hasMatch = poiWords.some(pw => textWords.some(tw =>
+            tw.length > 3 && (pw.includes(tw) || tw.includes(pw))
+          )) || text.includes(poiNameLower);
+
+          if (hasMatch) {
             const poi = block.poi;
+            foundInItinerary = true;
+
+            // Build comprehensive info about what's shown on screen
+            const isFood = poi.category.some(c =>
+              c.toLowerCase().includes("food") ||
+              c.toLowerCase().includes("restaurant") ||
+              c.toLowerCase().includes("cafe")
+            );
 
             infoContext = `
-Place: ${poi.name}
+PLACE IN YOUR ITINERARY:
+Name: ${poi.name}
+Scheduled: Day ${day.dayNumber}, ${block.timeSlot} (${block.startTime} - ${block.endTime})
+
+DETAILS ON SCREEN:
 Description: ${poi.description}
-Duration: ${poi.estimated_duration_mins} minutes
-Entry cost: ${poi.cost_inr > 0 ? `₹${poi.cost_inr}` : "Free"}
-Best time: ${poi.best_time}
-Categories: ${poi.category.join(", ")}
+Duration: ${poi.estimated_duration_mins} minutes recommended
+Entry cost: ${poi.cost_inr > 0 ? `₹${poi.cost_inr} per person` : "Free entry"}
+Best time to visit: ${poi.best_time}
+Type: ${poi.category.join(", ")}
+Crowd level: ${poi.crowd_level}
 Accessibility: ${poi.accessibility}
-Tips: ${poi.tips.join(". ")}`;
+${isFood && poi.dietary ? `Dietary: ${poi.dietary === "veg" ? "Pure Vegetarian" : "Veg & Non-veg available"}` : ""}
+
+${poi.tips && poi.tips.length > 0 ? `LOCAL TIPS:\n${poi.tips.map((t, i) => `${i + 1}. ${t}`).join("\n")}` : ""}
+
+${block.reasoning ? `WHY I PICKED THIS: ${block.reasoning}` : ""}`;
 
             sources = [{ text: poi.description, source: poi.source }];
             break;
@@ -220,17 +254,22 @@ Tips: ${poi.tips.join(". ")}`;
       }
     }
 
-    // Use RAG for general info if not found in itinerary
+    // If not in itinerary, use RAG for general info
     if (!infoContext) {
       const ragResult = await retrieve(intent.rawText);
       infoContext = ragResult.context || "";
       sources = ragResult.sources;
     }
 
+    // Build prompt with context about what's shown on screen
+    const promptContext = foundInItinerary
+      ? `This place is shown on the user's screen in their itinerary. Explain what's displayed and why it's a good choice.`
+      : `This place may not be in their current itinerary. Provide general information.`;
+
     // Use LLM to generate natural response
     const message = await generateQueryResponse({
       userQuestion: intent.rawText,
-      ragContext: infoContext,
+      ragContext: `${promptContext}\n\n${infoContext}`,
       currentItinerary,
       questionType: "info",
     });

@@ -8,7 +8,7 @@ import type {
 import { searchPOIs } from "@/services/mcp/poiSearch";
 import { buildItinerary } from "@/services/mcp/itineraryBuilder";
 import { getSeasonInfo } from "@/services/mcp/weatherAdjustment";
-import { getRecommendedVehicle, formatCostBreakdown } from "@/services/mcp/travelCostCalculator";
+import { getRecommendedVehicle } from "@/services/mcp/travelCostCalculator";
 import travelTimesData from "@/data/ooty-travel-times.json";
 import {
   generateItineraryResponse,
@@ -708,6 +708,7 @@ export class PlanningAgent {
 
   /**
    * Generate a human-readable message with grounded explanations
+   * Includes final summary and thank you with export options
    */
   private async generateItineraryMessage(
     itinerary: Itinerary,
@@ -720,6 +721,16 @@ export class PlanningAgent {
     const totalDistanceKm = days.reduce((sum, d) => sum + (d.totalDistanceKm || 0), 0);
     const totalTravelCost = days.reduce((sum, d) => sum + (d.travelCostInr || 0), 0);
 
+    // Calculate activity cost
+    const totalActivityCost = days.reduce((sum, d) =>
+      sum + d.blocks.reduce((s, b) => s + (b.poi.cost_inr || 0), 0), 0);
+
+    // Calculate hotel cost estimate
+    const roomsNeeded = preferences.roomsNeeded || Math.ceil((preferences.groupSize || 2) / 2);
+    const hotelRatePerNight = preferences.hotelCategory === "5-star" ? 8000 :
+                              preferences.hotelCategory === "3-star" ? 2500 : 4500;
+    const hotelCost = roomsNeeded * hotelRatePerNight * preferences.numDays;
+
     // Get highlights for LLM
     const highlights: string[] = [];
     if (days.length > 0) {
@@ -730,6 +741,31 @@ export class PlanningAgent {
       }
     }
 
+    // Build final summary
+    const finalSummary = `
+
+TRIP SUMMARY:
+- ${preferences.numDays} days, ${days.reduce((s, d) => s + d.blocks.length, 0)} activities
+- ${preferences.groupSize || 2} guests, ${roomsNeeded} ${preferences.hotelCategory || "4-star"} room${roomsNeeded > 1 ? "s" : ""}
+- Vehicle: ${preferences.vehicleType || "sedan"} (${Math.round(totalDistanceKm)} km total)
+
+ESTIMATED COSTS:
+- Activities: ~₹${totalActivityCost.toLocaleString("en-IN")}
+- Transport: ~₹${totalTravelCost.toLocaleString("en-IN")}
+- Hotel: ~₹${hotelCost.toLocaleString("en-IN")}
+- Total: ~₹${(totalActivityCost + totalTravelCost + hotelCost).toLocaleString("en-IN")} (excluding food)`;
+
+    // Thank you message with export options
+    const thankYouMessage = `
+
+Thank you for planning your Ooty trip with me! Your itinerary is ready on the left. You can:
+- Click "PDF" to download and print your itinerary
+- Click "HTML" to save it as a web page
+- Ask me to modify any activity or add new places
+- Ask about any specific spot to know more details
+
+Have a wonderful trip to the Queen of Hill Stations!`;
+
     // Try LLM-powered response
     try {
       const llmMessage = await generateItineraryResponse({
@@ -739,12 +775,7 @@ export class PlanningAgent {
         warnings: result.warnings,
       });
 
-      // Append travel cost info
-      if (totalTravelCost > 0 && preferences.vehicleType) {
-        return `${llmMessage} Estimated travel cost: ${formatCostBreakdown({ totalDistanceKm, vehicleType: preferences.vehicleType, numDays: preferences.numDays })}.`;
-      }
-
-      return llmMessage;
+      return llmMessage + finalSummary + thankYouMessage;
     } catch {
       // Fallback to generated message
       const totalPOIs = days.reduce((sum, day) => sum + day.blocks.length, 0);
@@ -768,13 +799,7 @@ export class PlanningAgent {
         message += `Note: ${result.warnings[0]} `;
       }
 
-      if (totalTravelCost > 0) {
-        message += `Estimated travel: ${Math.round(totalDistanceKm)}km, around ₹${totalTravelCost}. `;
-      }
-
-      message += "You can ask me to modify anything - add places, remove activities, or shuffle the order.";
-
-      return message;
+      return message + finalSummary + thankYouMessage;
     }
   }
 
