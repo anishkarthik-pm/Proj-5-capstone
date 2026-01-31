@@ -9,6 +9,7 @@ import { classifyIntent } from "./intentClassifier";
 import { planningAgent } from "./planningAgent";
 import { editAgent } from "./editAgent";
 import { queryAgent } from "./queryAgent";
+import { generateContextualHelp } from "./conversationLLM";
 
 interface OrchestratorState {
   context: ConversationContext;
@@ -188,24 +189,25 @@ export class Orchestrator {
   }
 
   /**
-   * Handle unclear intent
+   * Handle unclear intent - uses LLM for contextual, helpful responses
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  private async handleUnclearIntent(_transcript: string): Promise<AgentResponse> {
-    // Try to be helpful based on context
-    if (!this.state.context.currentItinerary) {
-      return {
-        success: true,
-        message:
-          "I'm here to help you plan a trip to Ooty. You can say something like 'Plan a 3-day trip to Ooty' or ask me about places to visit.",
-        shouldSpeak: true,
-      };
-    }
+  private async handleUnclearIntent(transcript: string): Promise<AgentResponse> {
+    // Build conversation history for context
+    const conversationHistory = this.state.context.messages.slice(-6).map(m => ({
+      role: m.role,
+      content: m.content,
+    }));
+
+    // Use LLM to generate contextual help
+    const helpMessage = await generateContextualHelp({
+      userText: transcript,
+      currentItinerary: this.state.context.currentItinerary,
+      conversationHistory,
+    });
 
     return {
       success: true,
-      message:
-        "I'm not sure what you'd like me to do. You can ask me to modify your itinerary, explain why I chose certain places, or answer questions about Ooty.",
+      message: helpMessage,
       shouldSpeak: true,
     };
   }

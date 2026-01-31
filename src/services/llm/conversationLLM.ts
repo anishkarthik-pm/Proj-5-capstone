@@ -415,6 +415,135 @@ function fallbackParseIntent(text: string): ParsedEditIntent {
   return { action: "unknown", confidence: 0.3 };
 }
 
+/**
+ * Generate contextual help response using LLM
+ * This handles unclear intents by explaining what's on screen and how to interact
+ */
+export async function generateContextualHelp(params: {
+  userText: string;
+  currentItinerary: Itinerary | null;
+  conversationHistory?: Array<{ role: string; content: string }>;
+}): Promise<string> {
+  const { userText, currentItinerary, conversationHistory } = params;
+
+  // Build context about what's on screen
+  let screenContext = "";
+  if (currentItinerary) {
+    const daySummaries = currentItinerary.days.map(d => {
+      const activities = d.blocks.map(b => `${b.timeSlot}: ${b.poi.name}`).join(", ");
+      return `Day ${d.dayNumber} (${d.theme || "Mixed"}): ${activities}`;
+    }).join("\n");
+
+    const totalCost = currentItinerary.days.reduce((sum, d) =>
+      sum + d.blocks.reduce((s, b) => s + (b.poi.cost_inr || 0), 0), 0);
+
+    screenContext = `
+CURRENT ITINERARY ON SCREEN:
+${daySummaries}
+
+Trip Details:
+- ${currentItinerary.preferences.numDays} days
+- ${currentItinerary.preferences.groupSize || 2} travelers
+- Pace: ${currentItinerary.preferences.pace || "moderate"}
+- Estimated entry costs: ₹${totalCost}
+`;
+  } else {
+    screenContext = "NO ITINERARY YET - User hasn't created a trip plan.";
+  }
+
+  // Build conversation context
+  const recentHistory = conversationHistory?.slice(-4).map(m =>
+    `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`
+  ).join("\n") || "";
+
+  const prompt = `You are a friendly Ooty travel planning assistant. The user said something you need to respond to helpfully.
+
+${screenContext}
+
+${recentHistory ? `RECENT CONVERSATION:\n${recentHistory}\n` : ""}
+
+USER JUST SAID: "${userText}"
+
+Generate a helpful response that:
+1. If they have an itinerary: Briefly describe what's shown (days, key places) and explain how they can modify it
+2. If no itinerary: Guide them on how to start planning
+3. Answer any question they might have based on context
+4. Be specific about what commands/requests work:
+   - "Add [place] to Day [X]" - adds a new activity
+   - "Remove [place]" - removes an activity
+   - "Replace [place] with something else" - swaps activities
+   - "Swap Day 1 and Day 2" - reorder days
+   - "Tell me about [place]" - get info
+   - "Why did you pick [place]?" - get reasoning
+
+${currentItinerary ? `Their itinerary has ${currentItinerary.days.length} days. Mention 2-3 specific places from their plan.` : ""}
+
+Be conversational, helpful, and specific. Keep response to 2-3 sentences. No emojis.`;
+
+  try {
+    const result = await generateCompletion([{ role: "user", content: prompt }]);
+    return result?.content || generateFallbackHelp(currentItinerary);
+  } catch {
+    return generateFallbackHelp(currentItinerary);
+  }
+}
+
+function generateFallbackHelp(itinerary: Itinerary | null): string {
+  if (itinerary) {
+    const places = itinerary.days.flatMap(d => d.blocks.map(b => b.poi.name)).slice(0, 3).join(", ");
+    return `Your itinerary includes ${places} and more. You can ask me to add, remove, or replace activities, swap days around, or ask about any place. What would you like to do?`;
+  }
+  return "I can help you plan a trip to Ooty. Just say something like 'Plan a 3-day trip' or ask me about places to visit in Ooty.";
+}
+
+/**
+ * Generate LLM-powered response for queries
+ * Enhances RAG results with natural language generation
+ */
+export async function generateQueryResponse(params: {
+  userQuestion: string;
+  ragContext: string | null;
+  currentItinerary: Itinerary | null;
+  questionType: "why" | "what_if" | "info" | "feasibility" | "general";
+}): Promise<string> {
+  const { userQuestion, ragContext, currentItinerary, questionType } = params;
+
+  // Build itinerary context
+  let itineraryContext = "";
+  if (currentItinerary) {
+    const places = currentItinerary.days.flatMap(d =>
+      d.blocks.map(b => `${b.poi.name} (Day ${d.dayNumber}, ${b.timeSlot})`)
+    );
+    itineraryContext = `\nPlaces in their itinerary: ${places.join(", ")}`;
+  }
+
+  const typeInstructions: Record<string, string> = {
+    why: "Explain the reasoning behind the choice, connecting it to user preferences and the place's qualities.",
+    what_if: "Address their hypothetical scenario with practical advice and alternatives if needed.",
+    info: "Provide specific, useful information about the place or topic they're asking about.",
+    feasibility: "Assess whether their idea is practical and provide honest, helpful guidance.",
+    general: "Answer their question directly and helpfully based on the available information.",
+  };
+
+  const prompt = `You are a knowledgeable Ooty travel guide answering a visitor's question.
+
+USER'S QUESTION: "${userQuestion}"
+QUESTION TYPE: ${questionType}
+${ragContext ? `\nRELEVANT INFORMATION:\n${ragContext}` : ""}
+${itineraryContext}
+
+Instructions: ${typeInstructions[questionType] || typeInstructions.general}
+
+Generate a helpful, natural response. Be specific and informative. If you don't have enough information, acknowledge that but still try to be helpful. Keep it to 2-4 sentences. No emojis.`;
+
+  try {
+    const result = await generateCompletion([{ role: "user", content: prompt }]);
+    return result?.content || ragContext || "I don't have specific information about that. Could you tell me more about what you'd like to know?";
+  } catch {
+    return ragContext || "I'm having trouble accessing my knowledge base. Could you try asking in a different way?";
+  }
+}
+
 const conversationLLM = {
   generateItineraryResponse,
   generateEditResponse,
@@ -423,6 +552,8 @@ const conversationLLM = {
   generateClarifyingQuestion,
   generateConfirmationMessage,
   parseEditIntent,
+  generateContextualHelp,
+  generateQueryResponse,
 };
 
 export default conversationLLM;
