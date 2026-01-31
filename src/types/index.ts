@@ -50,6 +50,13 @@ export interface TripPreferences {
   hotelId?: string; // Selected hotel ID
   dietaryPreference?: "veg" | "non-veg" | "any"; // Food preference
   specialRequests?: string;
+  // Travel agent style fields
+  ticketsBooked?: boolean; // Has the traveler already booked tickets to destination?
+  needsPickupDrop?: boolean; // Needs airport/railway pickup and drop?
+  arrivalPoint?: "airport" | "railway" | "bus" | "self-drive"; // How they're arriving
+  arrivalTime?: string; // Expected arrival time
+  departureTime?: string; // Expected departure time
+  roomsNeeded?: number; // Number of hotel rooms needed (calculated from groupSize)
 }
 
 // ============================================

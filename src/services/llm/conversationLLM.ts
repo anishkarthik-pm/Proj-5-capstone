@@ -232,7 +232,7 @@ Then write a brief intro message (1 sentence) inviting them to choose.`;
 }
 
 /**
- * Generate clarifying question response
+ * Generate professional travel agent style clarifying questions
  */
 export async function generateClarifyingQuestion(params: {
   questionType: string;
@@ -240,36 +240,69 @@ export async function generateClarifyingQuestion(params: {
   questionNumber: number;
   maxQuestions: number;
 }): Promise<string> {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { questionType, previousAnswers: _previousAnswers, questionNumber, maxQuestions } = params;
+  const { questionType, previousAnswers, questionNumber, maxQuestions } = params;
 
+  // Professional travel agent style questions
   const questionsMap: Record<string, string> = {
-    numDays: "How many days are you planning to spend in Ooty?",
-    pace: "Do you prefer a relaxed pace with fewer activities, or a packed schedule seeing as much as possible?",
-    interests: "What interests you most - nature and scenic views, food and tea, culture and heritage, or adventure activities?",
-    travelParty: "Who are you traveling with - solo, couple, family with kids, or a group of friends?",
-    groupSize: "How many people will be traveling? This helps me suggest the right vehicle.",
-    dietaryPreference: "For food recommendations, do you prefer vegetarian only or are you open to non-veg options?",
-    specialRequests: "Any specific places you definitely want to visit, or any other preferences I should know about?",
+    startDate: "What is your travel date? When are you planning to visit Ooty?",
+    numDays: "How many days will you be staying in Ooty?",
+    groupSize: "How many people are traveling? This helps me arrange the right vehicle and hotel rooms.",
+    ticketsBooked: "Have you already booked your tickets to reach Ooty, or do you need help with that?",
+    arrivalPoint: "How will you be arriving - by flight to Coimbatore airport, train to Mettupalayam, bus, or self-drive?",
+    needsPickupDrop: "Would you like me to arrange pickup and drop from your arrival point?",
+    hotelCategory: "What type of hotel do you prefer - 3-star (budget-friendly), 4-star (comfortable), or 5-star (luxury)?",
+    dietaryPreference: "For food and hotel dining, do you prefer pure vegetarian, or are you open to non-veg options?",
+    interests: "What kind of experiences interest you - nature and viewpoints, tea gardens and food, heritage and culture, or adventure activities?",
+    pace: "Would you prefer a relaxed trip with fewer activities, or a packed schedule to see as much as possible?",
+    specialRequests: "Any must-visit places or special requirements I should keep in mind?",
   };
 
-  const baseQuestion = questionsMap[questionType] || "Could you tell me more about your preferences?";
+  const baseQuestion = questionsMap[questionType] || "Could you tell me more about your travel preferences?";
 
-  // For first question, add a friendly intro
+  // Build context from previous answers for a more natural flow
+  let contextPrefix = "";
+
+  // First question - warm professional greeting
   if (questionNumber === 1) {
-    return `Great, let's plan your Ooty adventure! ${baseQuestion}`;
+    return `Welcome! I'm your Ooty travel assistant. Let me help you plan the perfect trip. ${baseQuestion}`;
   }
 
-  // For last question, mention we're almost done
+  // Add contextual acknowledgment based on previous answers
+  if (questionType === "numDays" && previousAnswers.startDate) {
+    const date = previousAnswers.startDate as Date;
+    const dateStr = date.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+    contextPrefix = `Perfect, ${dateStr} it is. `;
+  } else if (questionType === "groupSize" && previousAnswers.numDays) {
+    contextPrefix = `Great, ${previousAnswers.numDays} days sounds good. `;
+  } else if (questionType === "ticketsBooked" && previousAnswers.groupSize) {
+    const size = previousAnswers.groupSize as number;
+    contextPrefix = `${size} ${size === 1 ? "person" : "people"}, noted. `;
+  } else if (questionType === "arrivalPoint" && previousAnswers.ticketsBooked === false) {
+    contextPrefix = "No worries, I can help with that. But first, ";
+  } else if (questionType === "needsPickupDrop" && previousAnswers.arrivalPoint) {
+    const arrival = previousAnswers.arrivalPoint as string;
+    const arrivalText = arrival === "airport" ? "Coimbatore airport" :
+                        arrival === "railway" ? "the railway station" :
+                        arrival === "bus" ? "the bus stand" : "your own vehicle";
+    contextPrefix = `Arriving via ${arrivalText}. `;
+  } else if (questionType === "hotelCategory" && previousAnswers.groupSize) {
+    const size = previousAnswers.groupSize as number;
+    const rooms = Math.ceil(size / 2);
+    contextPrefix = `For ${size} guests, I'll arrange ${rooms} ${rooms === 1 ? "room" : "rooms"}. `;
+  } else if (questionType === "dietaryPreference") {
+    contextPrefix = "For your meals and hotel selection, ";
+  }
+
+  // Almost done message
   if (questionNumber >= maxQuestions - 1) {
-    return `Almost there! ${baseQuestion}`;
+    return `${contextPrefix}Almost done! ${baseQuestion}`;
   }
 
-  return baseQuestion;
+  return `${contextPrefix}${baseQuestion}`;
 }
 
 /**
- * Generate confirmation summary
+ * Generate professional travel agent style confirmation summary
  */
 export async function generateConfirmationMessage(params: {
   preferences: Record<string, unknown>;
@@ -277,21 +310,69 @@ export async function generateConfirmationMessage(params: {
 }): Promise<string> {
   const { preferences, weatherInfo } = params;
 
-  const parts: string[] = [];
+  // Format date
+  const startDate = preferences.startDate as Date | undefined;
+  const dateStr = startDate
+    ? startDate.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" })
+    : "your selected dates";
 
-  if (preferences.numDays) parts.push(`${preferences.numDays} days`);
-  if (preferences.pace) parts.push(`${preferences.pace} pace`);
-  if (preferences.interests && Array.isArray(preferences.interests)) {
-    parts.push(`interested in ${(preferences.interests as string[]).join(", ")}`);
+  // Build comprehensive summary
+  const groupSize = (preferences.groupSize as number) || 2;
+  const roomsNeeded = (preferences.roomsNeeded as number) || Math.ceil(groupSize / 2);
+  const numDays = (preferences.numDays as number) || 2;
+
+  // Build summary sections
+  const sections: string[] = [];
+
+  // Travel dates section
+  sections.push(`Trip: ${numDays} days starting ${dateStr}`);
+
+  // Group and accommodation
+  const hotelCategory = (preferences.hotelCategory as string) || "4-star";
+  sections.push(`Guests: ${groupSize} travelers, ${roomsNeeded} ${hotelCategory} ${roomsNeeded === 1 ? "room" : "rooms"}`);
+
+  // Transport
+  const vehicle = preferences.vehicleRecommendation as string;
+  const arrivalPoint = preferences.arrivalPoint as string;
+  const needsPickup = preferences.needsPickupDrop as boolean;
+
+  if (vehicle) {
+    let transportNote = `Transport: ${vehicle.charAt(0).toUpperCase() + vehicle.slice(1)} for local travel`;
+    if (needsPickup && arrivalPoint) {
+      const arrivalText = arrivalPoint === "airport" ? "Coimbatore airport" :
+                          arrivalPoint === "railway" ? "railway station" :
+                          arrivalPoint === "bus" ? "bus stand" : "";
+      if (arrivalText) {
+        transportNote += `, pickup from ${arrivalText}`;
+      }
+    }
+    sections.push(transportNote);
   }
-  if (preferences.travelParty) {
-    parts.push(`traveling ${preferences.travelParty === "solo" ? "solo" : `as a ${preferences.travelParty}`}`);
+
+  // Dining preference
+  const dietary = preferences.dietaryPreference as string;
+  if (dietary) {
+    const dietaryText = dietary === "veg" ? "Pure Vegetarian" : "Veg & Non-veg options";
+    sections.push(`Dining: ${dietaryText}`);
   }
-  if (preferences.groupSize) parts.push(`${preferences.groupSize} people`);
 
-  const summary = parts.join(", ");
+  // Interests
+  const interests = preferences.interests as string[];
+  if (interests && interests.length > 0) {
+    sections.push(`Interests: ${interests.map(i => i.charAt(0).toUpperCase() + i.slice(1)).join(", ")}`);
+  }
 
-  return `Let me confirm: ${summary}. The weather in Ooty is typically ${weatherInfo.condition} with temperatures around ${weatherInfo.temperature}°C. Should I create your itinerary based on these preferences? Say yes to proceed, or tell me what to change.`;
+  // Pace
+  const pace = preferences.pace as string;
+  if (pace) {
+    sections.push(`Pace: ${pace.charAt(0).toUpperCase() + pace.slice(1)}`);
+  }
+
+  // Weather note
+  const weatherNote = `Weather: ${weatherInfo.condition}, around ${weatherInfo.temperature}°C`;
+  sections.push(weatherNote);
+
+  return `Here's your trip summary:\n\n${sections.join("\n")}\n\nShall I create your personalized itinerary? Say yes to proceed, or tell me what you'd like to change.`;
 }
 
 /**
