@@ -204,11 +204,12 @@ const CLARIFYING_QUESTIONS = [
   },
 ];
 
-const MAX_CLARIFICATIONS = 6;
+const MAX_CLARIFICATIONS = 10; // Increased to cover all questions
 
 interface PlanningState {
   preferences: Partial<TripPreferences>;
-  questionsAsked: string[];
+  questionsAsked: string[]; // Track by question KEY, not text
+  currentQuestionKey: string | null; // Track current question being answered
   clarificationCount: number;
   awaitingConfirmation: boolean;
 }
@@ -225,6 +226,7 @@ export class PlanningAgent {
         city: "ooty",
       },
       questionsAsked: [],
+      currentQuestionKey: null,
       clarificationCount: 0,
       awaitingConfirmation: false,
     };
@@ -245,25 +247,31 @@ export class PlanningAgent {
     const missingFields = this.getMissingFields();
 
     if (missingFields.length > 0 && this.state.clarificationCount < MAX_CLARIFICATIONS) {
+      const nextField = missingFields[0];
+
       // Use LLM for natural question generation
       let question: string;
       try {
         question = await generateClarifyingQuestion({
-          questionType: missingFields[0],
+          questionType: nextField,
           previousAnswers: this.state.preferences,
           questionNumber: this.state.clarificationCount + 1,
           maxQuestions: MAX_CLARIFICATIONS,
         });
       } catch {
-        question = this.getNextQuestion(missingFields);
+        const questionConfig = CLARIFYING_QUESTIONS.find((q) => q.key === nextField);
+        question = questionConfig?.question || "Could you tell me more?";
       }
+
+      // Track by KEY, not by question text
+      this.state.currentQuestionKey = nextField;
+      this.state.questionsAsked.push(nextField);
       this.state.clarificationCount++;
-      this.state.questionsAsked.push(question);
 
       return {
         success: true,
         message: question,
-        data: { needsClarification: true, missingFields },
+        data: { needsClarification: true, missingFields, currentQuestion: nextField },
         shouldSpeak: true,
       };
     }
@@ -285,42 +293,52 @@ export class PlanningAgent {
       return this.handleConfirmationResponse(transcript);
     }
 
-    // Find which question we're answering
-    const lastQuestion = this.state.questionsAsked[this.state.questionsAsked.length - 1];
-    const questionConfig = CLARIFYING_QUESTIONS.find(
-      (q) => q.question === lastQuestion
-    );
-
-    if (questionConfig) {
-      const extracted = questionConfig.extract(transcript);
-      if (extracted !== null) {
-        (this.state.preferences as Record<string, unknown>)[questionConfig.key] = extracted;
+    // Find which question we're answering using currentQuestionKey
+    const currentKey = this.state.currentQuestionKey;
+    if (currentKey) {
+      const questionConfig = CLARIFYING_QUESTIONS.find((q) => q.key === currentKey);
+      if (questionConfig) {
+        const extracted = questionConfig.extract(transcript);
+        if (extracted !== null) {
+          (this.state.preferences as Record<string, unknown>)[questionConfig.key] = extracted;
+        }
       }
+    }
+
+    // Special handling: skip needsPickupDrop if self-drive
+    if (this.state.preferences.arrivalPoint === "self-drive") {
+      this.state.preferences.needsPickupDrop = false;
     }
 
     // Check if we need more information
     const missingFields = this.getMissingFields();
 
     if (missingFields.length > 0 && this.state.clarificationCount < MAX_CLARIFICATIONS) {
+      const nextField = missingFields[0];
+
       // Use LLM for natural question generation
       let question: string;
       try {
         question = await generateClarifyingQuestion({
-          questionType: missingFields[0],
+          questionType: nextField,
           previousAnswers: this.state.preferences,
           questionNumber: this.state.clarificationCount + 1,
           maxQuestions: MAX_CLARIFICATIONS,
         });
       } catch {
-        question = this.getNextQuestion(missingFields);
+        const questionConfig = CLARIFYING_QUESTIONS.find((q) => q.key === nextField);
+        question = questionConfig?.question || "Could you tell me more?";
       }
+
+      // Track by KEY, not by question text
+      this.state.currentQuestionKey = nextField;
+      this.state.questionsAsked.push(nextField);
       this.state.clarificationCount++;
-      this.state.questionsAsked.push(question);
 
       return {
         success: true,
         message: question,
-        data: { needsClarification: true, missingFields },
+        data: { needsClarification: true, missingFields, currentQuestion: nextField },
         shouldSpeak: true,
       };
     }
@@ -527,59 +545,45 @@ export class PlanningAgent {
 
   /**
    * Get list of missing required fields - prioritized for travel agent flow
+   * Order: Date → Duration → Group size → Tickets → Arrival mode → Pickup → Hotel → Food → Interests → Pace
    */
   private getMissingFields(): string[] {
-    // Priority order: essential booking info first, then preferences
-    const required = [
-      "startDate",       // When are they traveling?
-      "numDays",         // How long?
-      "groupSize",       // How many people? (needed for rooms & vehicle)
-      "ticketsBooked",   // Do they have tickets?
-      "arrivalPoint",    // How are they arriving?
-      "hotelCategory",   // What hotel tier?
-      "dietaryPreference", // Food preference (affects hotel & restaurant suggestions)
+    const prefs = this.state.preferences as Record<string, unknown>;
+
+    // Full question order as requested
+    const allFields = [
+      "startDate",         // 1. When are they traveling?
+      "numDays",           // 2. How long?
+      "groupSize",         // 3. How many people?
+      "ticketsBooked",     // 4. Do they have tickets?
+      "arrivalPoint",      // 5. How are they arriving?
+      "needsPickupDrop",   // 6. Need pickup/drop? (skip if self-drive)
+      "hotelCategory",     // 7. What hotel tier?
+      "dietaryPreference", // 8. Food preference
+      "interests",         // 9. What interests them?
+      "pace",              // 10. Relaxed or packed?
     ];
 
     const missing: string[] = [];
 
-    for (const field of required) {
-      const value = (this.state.preferences as Record<string, unknown>)[field];
+    for (const field of allFields) {
+      // Skip needsPickupDrop if self-drive (they don't need pickup)
+      if (field === "needsPickupDrop" && prefs.arrivalPoint === "self-drive") {
+        continue;
+      }
+
+      // Skip if already asked (tracked by key)
+      if (this.state.questionsAsked.includes(field)) {
+        continue;
+      }
+
+      const value = prefs[field];
       if (value === undefined || value === null || (Array.isArray(value) && value.length === 0)) {
         missing.push(field);
       }
     }
 
     return missing;
-  }
-
-  /**
-   * Get the next clarifying question (prioritize required fields in travel agent order)
-   */
-  private getNextQuestion(missingFields: string[]): string {
-    // Ask questions in travel agent priority order
-    for (const field of missingFields) {
-      const questionConfig = CLARIFYING_QUESTIONS.find((q) => q.key === field);
-      if (questionConfig && !this.state.questionsAsked.includes(questionConfig.question)) {
-        return questionConfig.question;
-      }
-    }
-
-    // Then ask optional questions (interests, pace, special requests) if we have room
-    if (this.state.clarificationCount < MAX_CLARIFICATIONS - 1) {
-      const optionalFields = ["interests", "pace", "needsPickupDrop", "specialRequests"];
-      for (const field of optionalFields) {
-        const questionConfig = CLARIFYING_QUESTIONS.find((q) => q.key === field);
-        if (questionConfig && !this.state.questionsAsked.includes(questionConfig.question)) {
-          const value = (this.state.preferences as Record<string, unknown>)[field];
-          if (value === undefined || value === null) {
-            return questionConfig.question;
-          }
-        }
-      }
-    }
-
-    // Fallback
-    return "Is there anything specific you'd like me to include in your Ooty trip?";
   }
 
   /**
@@ -781,6 +785,7 @@ export class PlanningAgent {
     this.state = {
       preferences: { city: "ooty" },
       questionsAsked: [],
+      currentQuestionKey: null,
       clarificationCount: 0,
       awaitingConfirmation: false,
     };

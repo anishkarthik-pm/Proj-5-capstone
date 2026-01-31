@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useState } from "react";
-import { Calendar, MapPin, Clock, Download, FileText, BookOpen, ChevronDown, ChevronUp } from "lucide-react";
+import { Calendar, MapPin, Clock, Download, FileText, BookOpen, ChevronDown, ChevronUp, Users, Car, Hotel, Utensils, Plane, Train, Bus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTripStore } from "@/lib/stores/tripStore";
 import { useUIStore } from "@/lib/stores/uiStore";
 import { DayCard } from "./DayCard";
 import { CostBreakdown } from "./CostBreakdown";
 import { exportToPdf, downloadAsHtml } from "@/services/pdf/exportPdf";
+import { VEHICLE_RATES } from "@/services/mcp/travelCostCalculator";
 
 interface ItineraryViewProps {
   className?: string;
@@ -59,6 +60,17 @@ export function ItineraryView({ className }: ItineraryViewProps) {
 
   const { days, preferences } = itinerary;
 
+  // Calculate derived values
+  const groupSize = preferences.groupSize || 2;
+  const roomsNeeded = preferences.roomsNeeded || Math.ceil(groupSize / 2);
+  const vehicleType = preferences.vehicleType || "sedan";
+  const vehicleInfo = VEHICLE_RATES[vehicleType as keyof typeof VEHICLE_RATES];
+
+  // Get arrival icon
+  const ArrivalIcon = preferences.arrivalPoint === "airport" ? Plane :
+                      preferences.arrivalPoint === "railway" ? Train :
+                      preferences.arrivalPoint === "bus" ? Bus : Car;
+
   return (
     <div className={cn("flex flex-col h-full", className)}>
       {/* Header */}
@@ -70,35 +82,56 @@ export function ItineraryView({ className }: ItineraryViewProps) {
               Your Ooty Itinerary
             </h2>
             <p className="text-sm text-muted-foreground mt-1">
-              {preferences.numDays} days • {preferences.pace} pace •{" "}
-              {preferences.travelParty}
+              {new Date(preferences.startDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })} • {preferences.numDays} days • {preferences.pace} pace
             </p>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Clock className="w-4 h-4" />
-              <span>
-                {days.reduce((sum, d) => sum + d.blocks.length, 0)} activities
-              </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => exportToPdf(itinerary)}
+              className="flex items-center gap-1 px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+              title="Export as PDF"
+            >
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">PDF</span>
+            </button>
+            <button
+              onClick={() => downloadAsHtml(itinerary)}
+              className="flex items-center gap-1 px-3 py-1.5 text-sm bg-muted hover:bg-muted/80 rounded-md transition-colors"
+              title="Download HTML"
+            >
+              <FileText className="w-4 h-4" />
+              <span className="hidden sm:inline">HTML</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Trip Details Row */}
+        <div className="flex flex-wrap gap-3 mt-3 text-sm">
+          <div className="flex items-center gap-1.5 px-2 py-1 bg-muted rounded-md">
+            <Users className="w-3.5 h-3.5 text-muted-foreground" />
+            <span>{groupSize} guests</span>
+          </div>
+          <div className="flex items-center gap-1.5 px-2 py-1 bg-muted rounded-md">
+            <Hotel className="w-3.5 h-3.5 text-muted-foreground" />
+            <span>{roomsNeeded} {preferences.hotelCategory || "4-star"} room{roomsNeeded > 1 ? "s" : ""}</span>
+          </div>
+          <div className="flex items-center gap-1.5 px-2 py-1 bg-muted rounded-md">
+            <Car className="w-3.5 h-3.5 text-muted-foreground" />
+            <span>{vehicleInfo.name}</span>
+          </div>
+          {preferences.arrivalPoint && preferences.arrivalPoint !== "self-drive" && (
+            <div className="flex items-center gap-1.5 px-2 py-1 bg-muted rounded-md">
+              <ArrivalIcon className="w-3.5 h-3.5 text-muted-foreground" />
+              <span>Arriving by {preferences.arrivalPoint}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => exportToPdf(itinerary)}
-                className="flex items-center gap-1 px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
-                title="Export as PDF"
-              >
-                <Download className="w-4 h-4" />
-                <span className="hidden sm:inline">PDF</span>
-              </button>
-              <button
-                onClick={() => downloadAsHtml(itinerary)}
-                className="flex items-center gap-1 px-3 py-1.5 text-sm bg-muted hover:bg-muted/80 rounded-md transition-colors"
-                title="Download HTML"
-              >
-                <FileText className="w-4 h-4" />
-                <span className="hidden sm:inline">HTML</span>
-              </button>
-            </div>
+          )}
+          <div className="flex items-center gap-1.5 px-2 py-1 bg-muted rounded-md">
+            <Utensils className="w-3.5 h-3.5 text-muted-foreground" />
+            <span>{preferences.dietaryPreference === "veg" ? "Pure Veg" : "Veg & Non-veg"}</span>
+          </div>
+          <div className="flex items-center gap-1.5 px-2 py-1 bg-muted rounded-md">
+            <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+            <span>{days.reduce((sum, d) => sum + d.blocks.length, 0)} activities</span>
           </div>
         </div>
 

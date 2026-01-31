@@ -1,4 +1,5 @@
 import type { Itinerary } from "@/types";
+import { VEHICLE_RATES } from "@/services/mcp/travelCostCalculator";
 
 /**
  * Format time from 24h to 12h format
@@ -23,20 +24,44 @@ function formatDate(date: Date): string {
 }
 
 /**
+ * Get arrival point display text
+ */
+function getArrivalPointText(arrivalPoint?: string): string {
+  switch (arrivalPoint) {
+    case "airport": return "Coimbatore Airport";
+    case "railway": return "Mettupalayam/Coimbatore Railway";
+    case "bus": return "Bus Stand";
+    case "self-drive": return "Self-drive";
+    default: return "-";
+  }
+}
+
+/**
  * Generate HTML content for PDF export
  */
 export function generatePdfHtml(itinerary: Itinerary): string {
   const { preferences, days, sources } = itinerary;
 
+  // Separate tourist spots and restaurants for each day
   const activitiesHtml = days
-    .map(
-      (day) => `
+    .map((day) => {
+      const touristSpots = day.blocks.filter(
+        (b) => !b.poi.category.some((c) => c.toLowerCase().includes("food") || c.toLowerCase().includes("restaurant") || c.toLowerCase().includes("cafe"))
+      );
+      const restaurants = day.blocks.filter(
+        (b) => b.poi.category.some((c) => c.toLowerCase().includes("food") || c.toLowerCase().includes("restaurant") || c.toLowerCase().includes("cafe"))
+      );
+
+      return `
     <div class="day-section">
       <h2>Day ${day.dayNumber} ${day.theme ? `- ${day.theme}` : ""}</h2>
       <p class="date">${formatDate(day.date)}</p>
+      ${day.weather ? `<p class="weather">🌤 ${day.weather.condition}, ${day.weather.temperature.min}°-${day.weather.temperature.max}°C</p>` : ""}
 
+      ${touristSpots.length > 0 ? `
+      <div class="section-header">🏔️ Tourist Spots</div>
       <div class="activities">
-        ${day.blocks
+        ${touristSpots
           .map(
             (block, index) => `
           ${
@@ -44,38 +69,69 @@ export function generatePdfHtml(itinerary: Itinerary): string {
               ? `<div class="travel-time">🚗 ${block.travelTimeFromPrev} mins travel</div>`
               : ""
           }
-          <div class="activity">
+          <div class="activity tourist">
             <div class="time">${formatTime(block.startTime)} - ${formatTime(block.endTime)}</div>
             <div class="activity-content">
               <h3>${block.poi.name}</h3>
               <p class="duration">Duration: ${block.poi.estimated_duration_mins} mins | Cost: ₹${block.poi.cost_inr}</p>
               <p class="description">${block.poi.description}</p>
-              ${
-                block.poi.tips && block.poi.tips.length > 0
-                  ? `<p class="tip">💡 ${block.poi.tips[0]}</p>`
-                  : ""
-              }
+              ${block.poi.tips && block.poi.tips.length > 0 ? `<p class="tip">💡 ${block.poi.tips[0]}</p>` : ""}
               ${block.reasoning ? `<p class="reasoning">📍 ${block.reasoning}</p>` : ""}
             </div>
           </div>
         `
           )
           .join("")}
-      </div>
+      </div>` : ""}
+
+      ${restaurants.length > 0 ? `
+      <div class="section-header">🍽️ Restaurants & Cafes</div>
+      <div class="activities">
+        ${restaurants
+          .map(
+            (block) => `
+          <div class="activity food">
+            <div class="time">${formatTime(block.startTime)} - ${formatTime(block.endTime)}</div>
+            <div class="activity-content">
+              <h3>${block.poi.name}</h3>
+              <p class="duration">Duration: ${block.poi.estimated_duration_mins} mins | ${block.poi.dietary === "veg" ? "🥬 Pure Veg" : "🍗 Veg & Non-veg"}</p>
+              <p class="description">${block.poi.description}</p>
+              ${block.poi.tips && block.poi.tips.length > 0 ? `<p class="tip">💡 ${block.poi.tips[0]}</p>` : ""}
+            </div>
+          </div>
+        `
+          )
+          .join("")}
+      </div>` : ""}
     </div>
-  `
-    )
+  `;
+    })
     .join("");
 
   const sourcesHtml = sources
     .map((s) => `<li>${s.source}${s.url ? ` - <a href="${s.url}">${s.url}</a>` : ""}</li>`)
     .join("");
 
-  // Calculate total cost
-  const totalCost = days.reduce(
+  // Calculate costs
+  const totalActivityCost = days.reduce(
     (sum, day) => sum + day.blocks.reduce((daySum, block) => daySum + block.poi.cost_inr, 0),
     0
   );
+
+  // Travel costs
+  const totalDistanceKm = days.reduce((sum, d) => sum + (d.totalDistanceKm || 0), 0);
+  const vehicleType = preferences.vehicleType || "sedan";
+  const vehicleInfo = VEHICLE_RATES[vehicleType as keyof typeof VEHICLE_RATES];
+  const travelCost = Math.round(totalDistanceKm * vehicleInfo.perKmRate);
+
+  // Hotel costs (estimate)
+  const roomsNeeded = preferences.roomsNeeded || Math.ceil((preferences.groupSize || 2) / 2);
+  const hotelRatePerNight = preferences.hotelCategory === "5-star" ? 8000 :
+                            preferences.hotelCategory === "3-star" ? 2500 : 4500;
+  const hotelCost = roomsNeeded * hotelRatePerNight * preferences.numDays;
+  const hotelGst = Math.round(hotelCost * 0.12);
+
+  const grandTotal = totalActivityCost + travelCost + hotelCost + hotelGst;
 
   return `
 <!DOCTYPE html>
@@ -231,7 +287,59 @@ export function generatePdfHtml(itinerary: Itinerary): string {
     .cost-summary h2 {
       font-size: 16px;
       color: #92400e;
-      margin-bottom: 10px;
+      margin-bottom: 15px;
+    }
+
+    .cost-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .cost-table td {
+      padding: 8px 0;
+      border-bottom: 1px solid #fcd34d;
+    }
+
+    .cost-table td:last-child {
+      text-align: right;
+      font-weight: 500;
+    }
+
+    .cost-table .total td {
+      border-top: 2px solid #92400e;
+      border-bottom: none;
+      padding-top: 12px;
+    }
+
+    .cost-note {
+      font-size: 12px;
+      color: #92400e;
+      margin-top: 10px;
+      font-style: italic;
+    }
+
+    .section-header {
+      font-size: 14px;
+      font-weight: 600;
+      color: #10b981;
+      margin: 20px 0 10px 0;
+      padding-bottom: 5px;
+      border-bottom: 1px dashed #d1d5db;
+    }
+
+    .activity.tourist {
+      border-left-color: #10b981;
+    }
+
+    .activity.food {
+      border-left-color: #f59e0b;
+      background: #fffbeb;
+    }
+
+    .weather {
+      font-size: 13px;
+      color: #0369a1;
+      margin-bottom: 15px;
     }
 
     .sources {
@@ -283,22 +391,35 @@ export function generatePdfHtml(itinerary: Itinerary): string {
   </div>
 
   <div class="summary">
-    <h2>Trip Summary</h2>
+    <h2>Trip Details</h2>
     <div class="summary-grid">
+      <div class="summary-item"><span>Travel Date:</span> ${formatDate(preferences.startDate)}</div>
       <div class="summary-item"><span>Duration:</span> ${preferences.numDays} days</div>
-      <div class="summary-item"><span>Pace:</span> ${preferences.pace}</div>
-      <div class="summary-item"><span>Travel Party:</span> ${preferences.travelParty}</div>
-      <div class="summary-item"><span>Interests:</span> ${preferences.interests.join(", ")}</div>
+      <div class="summary-item"><span>Travelers:</span> ${preferences.groupSize || 2} people</div>
+      <div class="summary-item"><span>Rooms:</span> ${roomsNeeded} ${preferences.hotelCategory || "4-star"} room${roomsNeeded > 1 ? "s" : ""}</div>
+      <div class="summary-item"><span>Vehicle:</span> ${vehicleInfo.name}</div>
+      <div class="summary-item"><span>Arrival:</span> ${getArrivalPointText(preferences.arrivalPoint)}</div>
+      <div class="summary-item"><span>Pickup/Drop:</span> ${preferences.needsPickupDrop ? "Yes" : "No"}</div>
+      <div class="summary-item"><span>Dining:</span> ${preferences.dietaryPreference === "veg" ? "Pure Vegetarian" : "Veg & Non-veg"}</div>
+      <div class="summary-item"><span>Interests:</span> ${preferences.interests?.join(", ") || "Nature, Food"}</div>
+      <div class="summary-item"><span>Pace:</span> ${preferences.pace || "Moderate"}</div>
       <div class="summary-item"><span>Total Activities:</span> ${days.reduce((sum, d) => sum + d.blocks.length, 0)}</div>
-      <div class="summary-item"><span>Estimated Cost:</span> ₹${totalCost.toLocaleString("en-IN")}</div>
+      <div class="summary-item"><span>Total Distance:</span> ${totalDistanceKm} km</div>
     </div>
   </div>
 
   ${activitiesHtml}
 
   <div class="cost-summary">
-    <h2>💰 Estimated Total Cost</h2>
-    <p>Activity costs: ₹${totalCost.toLocaleString("en-IN")} (excluding food, transport, and accommodation)</p>
+    <h2>💰 Estimated Cost Breakdown</h2>
+    <table class="cost-table">
+      <tr><td>Entry/Activity Fees</td><td>₹${totalActivityCost.toLocaleString("en-IN")}</td></tr>
+      <tr><td>Transport (${vehicleInfo.name}, ${totalDistanceKm} km)</td><td>₹${travelCost.toLocaleString("en-IN")}</td></tr>
+      <tr><td>Hotel (${roomsNeeded} ${preferences.hotelCategory || "4-star"} room${roomsNeeded > 1 ? "s" : ""} × ${preferences.numDays} nights)</td><td>₹${hotelCost.toLocaleString("en-IN")}</td></tr>
+      <tr><td>Hotel GST (12%)</td><td>₹${hotelGst.toLocaleString("en-IN")}</td></tr>
+      <tr class="total"><td><strong>Estimated Total</strong></td><td><strong>₹${grandTotal.toLocaleString("en-IN")}</strong></td></tr>
+    </table>
+    <p class="cost-note">* Food and miscellaneous expenses not included</p>
   </div>
 
   <div class="sources">

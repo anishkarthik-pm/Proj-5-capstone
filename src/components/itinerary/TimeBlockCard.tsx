@@ -21,9 +21,10 @@ interface TimeBlockCardProps {
   block: TimeBlock;
   className?: string;
   onEdit?: () => void;
+  isFood?: boolean; // Different styling for food/restaurant spots
 }
 
-export function TimeBlockCard({ block, className, onEdit }: TimeBlockCardProps) {
+export function TimeBlockCard({ block, className, onEdit, isFood }: TimeBlockCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const { highlightedBlocks } = useUIStore();
   const isHighlighted = highlightedBlocks.includes(block.id);
@@ -76,6 +77,7 @@ export function TimeBlockCard({ block, className, onEdit }: TimeBlockCardProps) 
       className={cn(
         "bg-card border rounded-lg overflow-hidden transition-all duration-300",
         isHighlighted && "animate-highlight ring-2 ring-primary",
+        isFood && "border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20",
         className
       )}
     >

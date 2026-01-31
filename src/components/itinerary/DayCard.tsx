@@ -1,11 +1,23 @@
 "use client";
 
 import React from "react";
-import { Calendar, Clock, Car, Cloud, Sun, CloudRain, CloudFog, Thermometer, IndianRupee, MapPin } from "lucide-react";
+import { Calendar, Clock, Car, Cloud, Sun, CloudRain, CloudFog, Thermometer, IndianRupee, MapPin, Mountain, UtensilsCrossed } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { DayPlan } from "@/types";
+import type { DayPlan, TimeBlock } from "@/types";
 import { TimeBlockCard } from "./TimeBlockCard";
 import { TravelSegment } from "./TravelSegment";
+
+/**
+ * Check if a block is a food/restaurant spot
+ */
+function isFoodSpot(block: TimeBlock): boolean {
+  return block.poi.category.some(
+    (c) => c.toLowerCase().includes("food") ||
+           c.toLowerCase().includes("restaurant") ||
+           c.toLowerCase().includes("cafe") ||
+           c.toLowerCase().includes("dining")
+  );
+}
 
 // Weather icon based on condition
 function WeatherIcon({ condition }: { condition?: string }) {
@@ -124,20 +136,46 @@ export function DayCard({ day, className }: DayCardProps) {
         </div>
       )}
 
-      {/* Time Blocks */}
-      <div className="space-y-2">
-        {day.blocks.map((block, index) => (
-          <React.Fragment key={block.id}>
-            {/* Travel Segment (between blocks) */}
-            {index > 0 && block.travelTimeFromPrev > 0 && (
-              <TravelSegment
-                travelTime={block.travelTimeFromPrev}
-              />
+      {/* Separate tourist spots and restaurants */}
+      {(() => {
+        const touristSpots = day.blocks.filter((b) => !isFoodSpot(b));
+        const restaurants = day.blocks.filter((b) => isFoodSpot(b));
+
+        return (
+          <>
+            {/* Tourist Spots Section */}
+            {touristSpots.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium text-primary border-b pb-2">
+                  <Mountain className="w-4 h-4" />
+                  <span>Tourist Spots ({touristSpots.length})</span>
+                </div>
+                {touristSpots.map((block, index) => (
+                  <React.Fragment key={block.id}>
+                    {index > 0 && block.travelTimeFromPrev > 0 && (
+                      <TravelSegment travelTime={block.travelTimeFromPrev} />
+                    )}
+                    <TimeBlockCard block={block} />
+                  </React.Fragment>
+                ))}
+              </div>
             )}
-            <TimeBlockCard block={block} />
-          </React.Fragment>
-        ))}
-      </div>
+
+            {/* Restaurants Section */}
+            {restaurants.length > 0 && (
+              <div className="space-y-2 mt-4">
+                <div className="flex items-center gap-2 text-sm font-medium text-amber-600 border-b border-amber-200 pb-2">
+                  <UtensilsCrossed className="w-4 h-4" />
+                  <span>Restaurants & Cafes ({restaurants.length})</span>
+                </div>
+                {restaurants.map((block) => (
+                  <TimeBlockCard key={block.id} block={block} isFood />
+                ))}
+              </div>
+            )}
+          </>
+        );
+      })()}
 
       {/* Empty State */}
       {day.blocks.length === 0 && (
