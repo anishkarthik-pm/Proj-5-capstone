@@ -12,7 +12,6 @@ import { getRecommendedVehicle } from "@/services/mcp/travelCostCalculator";
 import travelTimesData from "@/data/ooty-travel-times.json";
 import {
   generateItineraryResponse,
-  generateClarifyingQuestion,
   generateConfirmationMessage,
 } from "./conversationLLM";
 
@@ -679,7 +678,7 @@ export class PlanningAgent {
 
     // Map hotel category to budget
     const budgetFromHotel = prefs.hotelCategory === "5-star" ? "luxury" :
-                            prefs.hotelCategory === "3-star" ? "budget" : "moderate";
+      prefs.hotelCategory === "3-star" ? "budget" : "moderate";
 
     return {
       city: "ooty",
@@ -725,7 +724,7 @@ export class PlanningAgent {
     // Calculate hotel cost estimate
     const roomsNeeded = preferences.roomsNeeded || Math.ceil((preferences.groupSize || 2) / 2);
     const hotelRatePerNight = preferences.hotelCategory === "5-star" ? 8000 :
-                              preferences.hotelCategory === "3-star" ? 2500 : 4500;
+      preferences.hotelCategory === "3-star" ? 2500 : 4500;
     const hotelCost = roomsNeeded * hotelRatePerNight * preferences.numDays;
 
     // Get highlights for LLM

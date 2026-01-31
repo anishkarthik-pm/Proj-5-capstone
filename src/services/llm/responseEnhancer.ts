@@ -149,7 +149,7 @@ Give 2-3 suggestions.`;
 
       const matchedPlace = availablePlaces.find(
         (p) => p.name.toLowerCase().includes(cleanName.toLowerCase()) ||
-               cleanName.toLowerCase().includes(p.name.toLowerCase())
+          cleanName.toLowerCase().includes(p.name.toLowerCase())
       );
 
       if (matchedPlace && reason) {
@@ -233,9 +233,11 @@ export async function validateApiKey(): Promise<{
   }
 }
 
-export default {
+const responseEnhancer = {
   enhanceResponse,
   generatePOIExplanation,
   generateSuggestions,
   validateApiKey,
 };
+
+export default responseEnhancer;

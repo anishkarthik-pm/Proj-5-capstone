@@ -50,8 +50,7 @@ export async function GET() {
     if (errorMessage.includes("404") && errorMessage.includes("not found")) {
       // Try with available models in order of preference
       const fallbackModels = ["gemini-2.5-flash-lite", "gemini-3-flash", "gemini-2.5-flash"];
-      let lastError = errorMessage;
-      
+
       for (const fallbackModel of fallbackModels) {
         try {
           const client = new GoogleGenerativeAI(apiKey);
@@ -72,11 +71,10 @@ export async function GET() {
             testResponse: response.slice(0, 50),
           });
         } catch (fallbackError) {
-          lastError = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
           continue; // Try next fallback model
         }
       }
-      
+
       // All fallbacks failed, return original error
       return NextResponse.json({
         valid: false,

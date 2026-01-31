@@ -16,7 +16,7 @@ import { useVoiceStore } from "@/lib/stores/voiceStore";
 import { useConversationStore } from "@/lib/stores/conversationStore";
 import { useUIStore } from "@/lib/stores/uiStore";
 import { useDebugStore } from "@/lib/stores/debugStore";
-import type { POI } from "@/types";
+import type { POI, Itinerary } from "@/types";
 // LLM calls go through API routes (not direct imports) for Vercel compatibility
 async function processWithOrchestrator(transcript: string) {
   const response = await fetch("/api/orchestrator", {
@@ -182,7 +182,6 @@ export default function Home() {
       }
     },
     [
-      isSpeaking,
       addMessage,
       addToHistory,
       setProcessing,

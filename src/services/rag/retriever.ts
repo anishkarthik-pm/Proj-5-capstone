@@ -271,4 +271,5 @@ export async function getAnswer(question: string): Promise<string | null> {
   return result.context || null;
 }
 
-export default { retrieve, initializeRAG, getAnswer };
+const retriever = { retrieve, initializeRAG, getAnswer };
+export default retriever;

@@ -30,16 +30,6 @@ export function VoiceOutput({
 
   const textToSpeak = text || currentResponse;
 
-  // Auto-speak when new response arrives (only if not muted)
-  useEffect(() => {
-    if (autoSpeak && !isMuted && textToSpeak && textToSpeak !== displayText) {
-      setDisplayText(textToSpeak);
-      handleSpeak(textToSpeak);
-    } else if (textToSpeak && textToSpeak !== displayText) {
-      setDisplayText(textToSpeak);
-    }
-  }, [textToSpeak, autoSpeak, isMuted]);
-
   const handleSpeak = useCallback(
     (content: string) => {
       if (!content || isMuted) return;
@@ -67,6 +57,16 @@ export function VoiceOutput({
     },
     [speakingRate, setIsSpeaking, onSpeakStart, onSpeakEnd, isMuted]
   );
+
+  // Auto-speak when new response arrives (only if not muted)
+  useEffect(() => {
+    if (autoSpeak && !isMuted && textToSpeak && textToSpeak !== displayText) {
+      setDisplayText(textToSpeak);
+      handleSpeak(textToSpeak);
+    } else if (textToSpeak && textToSpeak !== displayText) {
+      setDisplayText(textToSpeak);
+    }
+  }, [textToSpeak, autoSpeak, isMuted, displayText, handleSpeak]);
 
   const handlePlayPause = useCallback(() => {
     if (isSpeaking && !isPaused) {
@@ -174,11 +174,14 @@ export function VoiceOutput({
           variant="outline"
           size="icon"
           onClick={() => {
-            setIsMuted(!isMuted);
-            if (isMuted && textToSpeak) {
+            const nextMuted = !isMuted;
+            setIsMuted(nextMuted);
+            if (!nextMuted && textToSpeak) {
               handleSpeak(textToSpeak);
-            } else if (!isMuted && isSpeaking) {
+            } else if (nextMuted && isSpeaking) {
               stopSpeaking();
+              setIsSpeaking(false);
+              setIsPaused(false);
             }
           }}
           className="h-9 w-9"

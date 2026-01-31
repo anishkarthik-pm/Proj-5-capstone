@@ -36,7 +36,7 @@ interface ISpeechRecognition extends EventTarget {
 }
 
 interface ISpeechRecognitionConstructor {
-  new (): ISpeechRecognition;
+  new(): ISpeechRecognition;
 }
 
 // Extend Window interface for Web Speech API
@@ -44,6 +44,28 @@ declare global {
   interface Window {
     SpeechRecognition: ISpeechRecognitionConstructor;
     webkitSpeechRecognition: ISpeechRecognitionConstructor;
+  }
+}
+
+/**
+ * Utility to get human-readable error messages from speech recognition
+ */
+function getErrorMessage(error: string): string {
+  switch (error) {
+    case "no-speech":
+      return "No speech was detected. Please try again.";
+    case "audio-capture":
+      return "No microphone was found or microphone access was denied.";
+    case "not-allowed":
+      return "Microphone permission was denied. Please allow microphone access.";
+    case "network":
+      return "Network error occurred. Please check your connection.";
+    case "aborted":
+      return "Speech recognition was aborted.";
+    case "service-not-allowed":
+      return "Speech recognition service is not allowed.";
+    default:
+      return `Speech recognition error: ${error}`;
   }
 }
 
@@ -84,6 +106,30 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
       setError("Speech recognition is not supported in this browser");
     }
   }, [setError]);
+
+  const clearTimers = useCallback(() => {
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
+    }
+    if (maxDurationTimerRef.current) {
+      clearTimeout(maxDurationTimerRef.current);
+      maxDurationTimerRef.current = null;
+    }
+  }, []);
+
+  const stopListening = useCallback(() => {
+    clearTimers();
+
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (err) {
+        // Recognition might already be stopped
+        console.warn("Stop recognition warning:", err);
+      }
+    }
+  }, [clearTimers]);
 
   // Initialize recognition
   const initRecognition = useCallback(() => {
@@ -164,18 +210,9 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
     setInterimTranscript,
     onResult,
     onError,
+    clearTimers,
+    stopListening,
   ]);
-
-  const clearTimers = useCallback(() => {
-    if (silenceTimerRef.current) {
-      clearTimeout(silenceTimerRef.current);
-      silenceTimerRef.current = null;
-    }
-    if (maxDurationTimerRef.current) {
-      clearTimeout(maxDurationTimerRef.current);
-      maxDurationTimerRef.current = null;
-    }
-  }, []);
 
   const startListening = useCallback(() => {
     if (!isSupported) {
@@ -207,22 +244,7 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
       setError("Failed to start speech recognition");
       console.error("Speech recognition start error:", err);
     }
-  }, [isSupported, initRecognition, maxDuration, setError]);
-
-  const stopListening = useCallback(() => {
-    clearTimers();
-
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (err) {
-        // Recognition might already be stopped
-        console.warn("Stop recognition warning:", err);
-      }
-    }
-
-    setIsListening(false);
-  }, [clearTimers, setIsListening]);
+  }, [isSupported, initRecognition, maxDuration, setError, stopListening]);
 
   const resetTranscript = useCallback(() => {
     setTranscript("");
@@ -249,25 +271,6 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
     stopListening,
     resetTranscript,
   };
-}
-
-function getErrorMessage(error: string): string {
-  switch (error) {
-    case "no-speech":
-      return "No speech was detected. Please try again.";
-    case "audio-capture":
-      return "No microphone was found or microphone access was denied.";
-    case "not-allowed":
-      return "Microphone permission was denied. Please allow microphone access.";
-    case "network":
-      return "Network error occurred. Please check your connection.";
-    case "aborted":
-      return "Speech recognition was aborted.";
-    case "service-not-allowed":
-      return "Speech recognition service is not allowed.";
-    default:
-      return `Speech recognition error: ${error}`;
-  }
 }
 
 export default useSpeechRecognition;

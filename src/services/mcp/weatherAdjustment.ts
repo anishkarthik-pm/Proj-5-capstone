@@ -220,7 +220,7 @@ export function isPOISuitableForWeather(poi: POI, weather: WeatherCondition): {
   }
 
   if (suitability.bestConditions.includes("any") ||
-      suitability.bestConditions.includes(weather.condition)) {
+    suitability.bestConditions.includes(weather.condition)) {
     return { suitable: true, score: 1.0, reason: "Ideal weather for this attraction" };
   }
 
@@ -422,7 +422,7 @@ export function getWeatherTipsForPOI(poi: POI, weather: WeatherCondition): strin
   return tips;
 }
 
-export default {
+const weatherAdjustment = {
   getSeasonInfo,
   getTypicalWeather,
   isPOISuitableForWeather,
@@ -430,3 +430,5 @@ export default {
   adjustItineraryForWeather,
   getWeatherTipsForPOI,
 };
+
+export default weatherAdjustment;
