@@ -30,11 +30,13 @@ interface EditOperation {
 
 // Pending modification state for two-step flow
 interface PendingModification {
-  type: "awaiting_replacement_choice" | "awaiting_slot_choice";
+  type: "awaiting_replacement_choice" | "awaiting_slot_choice" | "awaiting_day_choice";
   dayNumber: number;
   blockToReplace?: TimeBlock;
   options?: POI[];
   selectedPOI?: POI;
+  originalText?: string;
+  timeSlot?: "morning" | "afternoon" | "evening";
 }
 
 /**
@@ -67,7 +69,31 @@ export class EditAgent {
 
     try {
       // Parse the edit request
-      const operation = await this.parseEditOperation(intent, currentItinerary);
+      const { operation, parsedIntent, daySpecified } = await this.parseEditOperation(
+        intent,
+        currentItinerary
+      );
+
+      if (
+        parsedIntent.action === "replace" &&
+        parsedIntent.needsOptions &&
+        !daySpecified &&
+        currentItinerary.days.length > 1
+      ) {
+        this.pendingModification = {
+          type: "awaiting_day_choice",
+          dayNumber: 1,
+          originalText: intent.rawText,
+          timeSlot: parsedIntent.timeSlot || intent.timeSlot,
+        };
+
+        return {
+          success: true,
+          message: "Which day would you like to change? Please say something like 'Day 1' or 'Day 2'.",
+          data: { needsClarification: true, awaitingDayChoice: true },
+          shouldSpeak: true,
+        };
+      }
 
       if (!operation) {
         return {
@@ -165,6 +191,50 @@ export class EditAgent {
       }
     }
 
+    if (pending.type === "awaiting_day_choice") {
+      const dayMatch = text.match(/day\s*(\d+)/i);
+      const ordinalMap: Record<string, number> = {
+        first: 1,
+        second: 2,
+        third: 3,
+        fourth: 4,
+        fifth: 5,
+        last: itinerary.days.length,
+      };
+      const ordinalMatch = Object.keys(ordinalMap).find(word => text.includes(word));
+      const dayNumber = dayMatch
+        ? parseInt(dayMatch[1], 10)
+        : ordinalMatch
+          ? ordinalMap[ordinalMatch]
+          : undefined;
+
+      if (dayNumber && dayNumber >= 1 && dayNumber <= itinerary.days.length) {
+        const operation = await this.createReplaceWithOptionsOperation(
+          dayNumber,
+          pending.timeSlot,
+          pending.originalText || intent.rawText,
+          itinerary
+        );
+
+        if (operation) {
+          return this.applyEdit(itinerary, operation);
+        }
+        this.pendingModification = null;
+        return {
+          success: false,
+          message: "I couldn't find replacement options for that day. Would you like to try a different change?",
+          shouldSpeak: true,
+        };
+      }
+
+      return {
+        success: false,
+        message: `Please tell me which day you'd like to change (1-${itinerary.days.length}).`,
+        data: { needsClarification: true, awaitingDayChoice: true },
+        shouldSpeak: true,
+      };
+    }
+
     if (pending.type === "awaiting_slot_choice" && pending.selectedPOI) {
       // User is selecting a slot
       let targetSlot: "morning" | "afternoon" | "evening" | undefined;
@@ -238,7 +308,11 @@ export class EditAgent {
   private async parseEditOperation(
     intent: VoiceIntent,
     itinerary: Itinerary
-  ): Promise<EditOperation | null> {
+  ): Promise<{
+    operation: EditOperation | null;
+    parsedIntent: ParsedEditIntent;
+    daySpecified: boolean;
+  }> {
     const text = intent.rawText;
 
     // Use LLM to understand the intent
@@ -261,6 +335,8 @@ export class EditAgent {
       this.pendingModification = null;
     }
 
+    const daySpecified = parsedIntent.dayNumber !== undefined || intent.dayNumber !== undefined;
+
     // Determine target day
     let targetDay = parsedIntent.dayNumber || intent.dayNumber || 1;
     if (targetDay > itinerary.days.length) targetDay = itinerary.days.length;
@@ -272,50 +348,90 @@ export class EditAgent {
     switch (parsedIntent.action) {
       case "suggest":
         return {
-          type: "suggest",
-          dayNumber: targetDay,
-          description: `Suggest places for Day ${targetDay}`,
+          operation: {
+            type: "suggest",
+            dayNumber: targetDay,
+            description: `Suggest places for Day ${targetDay}`,
+          },
+          parsedIntent,
+          daySpecified,
         };
 
       case "swap_days":
         if (parsedIntent.targetDayNumber) {
           return {
-            type: "swap_days",
-            dayNumber: targetDay,
-            targetDayNumber: parsedIntent.targetDayNumber,
-            description: `Swap Day ${targetDay} and Day ${parsedIntent.targetDayNumber}`,
+            operation: {
+              type: "swap_days",
+              dayNumber: targetDay,
+              targetDayNumber: parsedIntent.targetDayNumber,
+              description: `Swap Day ${targetDay} and Day ${parsedIntent.targetDayNumber}`,
+            },
+            parsedIntent,
+            daySpecified,
           };
         }
-        return this.createSwapOperation(targetDay, text.toLowerCase(), itinerary);
+        return {
+          operation: this.createSwapOperation(targetDay, text.toLowerCase(), itinerary),
+          parsedIntent,
+          daySpecified,
+        };
 
       case "add":
-        return this.createAddOperation(targetDay, timeSlot, text.toLowerCase(), itinerary);
+        return {
+          operation: await this.createAddOperation(targetDay, timeSlot, text.toLowerCase(), itinerary),
+          parsedIntent,
+          daySpecified,
+        };
 
       case "remove":
-        return this.createRemoveOperation(
-          targetDay,
-          timeSlot,
-          text.toLowerCase(),
-          itinerary.days[targetDay - 1]
-        );
+        return {
+          operation: this.createRemoveOperation(
+            targetDay,
+            timeSlot,
+            text.toLowerCase(),
+            itinerary.days[targetDay - 1]
+          ),
+          parsedIntent,
+          daySpecified,
+        };
 
       case "replace":
         // If user wants options first, use two-step flow
         if (parsedIntent.needsOptions) {
-          return this.createReplaceWithOptionsOperation(targetDay, timeSlot, text.toLowerCase(), itinerary);
+          return {
+            operation: await this.createReplaceWithOptionsOperation(targetDay, timeSlot, text.toLowerCase(), itinerary),
+            parsedIntent,
+            daySpecified,
+          };
         }
-        return this.createReplaceOperation(targetDay, timeSlot, text.toLowerCase(), itinerary);
+        return {
+          operation: await this.createReplaceOperation(targetDay, timeSlot, text.toLowerCase(), itinerary),
+          parsedIntent,
+          daySpecified,
+        };
 
       case "swap":
-        return this.createSwapOperation(targetDay, text.toLowerCase(), itinerary);
+        return {
+          operation: this.createSwapOperation(targetDay, text.toLowerCase(), itinerary),
+          parsedIntent,
+          daySpecified,
+        };
 
       default:
         // Low confidence or unknown - ask for clarification
         if (parsedIntent.confidence < 0.5) {
-          return null;
+          return {
+            operation: null,
+            parsedIntent,
+            daySpecified,
+          };
         }
         // Try to make a best guess
-        return this.createReplaceWithOptionsOperation(targetDay, timeSlot, text.toLowerCase(), itinerary);
+        return {
+          operation: await this.createReplaceWithOptionsOperation(targetDay, timeSlot, text.toLowerCase(), itinerary),
+          parsedIntent,
+          daySpecified,
+        };
     }
   }
 
@@ -757,9 +873,10 @@ export class EditAgent {
     }
 
     // Store pending modification for two-step flow
-    // If blockToReplace is not found, we need user to select day/time slot
+    // Always start by letting the user pick a replacement option; if we don't
+    // yet know the target slot, we'll ask for it after they choose.
     this.pendingModification = {
-      type: blockToReplace ? "awaiting_replacement_choice" : "awaiting_slot_choice",
+      type: "awaiting_replacement_choice",
       dayNumber,
       blockToReplace,
       options: result.pois,
